@@ -1,4 +1,9 @@
 *.idea
+*/data
+/data
+*/lightning_logs
+*.DS_Store
+*/mnist
 
 
 # Byte-compiled / optimized / DLL files
