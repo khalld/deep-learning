@@ -4,6 +4,7 @@
 */lightning_logs
 *.DS_Store
 */mnist
+*/fashion
 
 
 # Byte-compiled / optimized / DLL files
