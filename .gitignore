@@ -1,14 +1,12 @@
 *.idea
-*/data
-/data
+data
 */lightning_logs
 *.DS_Store
-*/mnist
-*/fashion
+mnist
+fashion
 
-*/grumpifycat.zip
-*/grumpifycat
-
+*/*/grumpifycat.zip
+*/*/grumpifycat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
