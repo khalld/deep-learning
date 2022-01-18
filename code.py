@@ -1,3 +1,4 @@
+import torch
 from torch.utils import data # necessary to create a map-style dataset https://pytorch.org/docs/stable/data.html
 from os.path import splitext, join
 from PIL import Image
@@ -6,13 +7,54 @@ import pandas as pd
 from torchvision import transforms
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-import torch
+from torchvision.utils import make_grid
+from torch import nn
+from torch.optim import SGD
+import pytorch_lightning as pl
+from sklearn.manifold import TSNE
+from pytorch_lightning.loggers import TensorBoardLogger
+
+def printer_helper(str):
+    return print("***** %s *****" % str)
 
 def reverse_norm(image):
     """Allow to show a normalized image"""
     
     image = image-image.min()
     return image/image.max()
+
+def extract_codes(model, loader):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    codes, labels = [], []
+    for batch in loader:
+        x = batch[0].to(device)
+        code, *_ = model(x)
+        # code = code.detach().to('cpu').numpy() # TODO only if is possible use GPU
+        code = code.detach().numpy()
+        labels.append(batch[1])
+        codes.append(code)
+    return np.concatenate(codes), np.concatenate(labels)
+
+def make_TSNE(autoencoder: pl.LightningModule, test_loader: DataLoader) -> None:
+    codes, labels = extract_codes(autoencoder, test_loader)
+    print(codes.shape, labels.shape)
+
+    # trasformo le mappe di feature in vettori monodimensionali e seleziono un sottoinsieme di dati
+    selected_codes = np.random.choice(len(codes),1000)
+    codes = codes.reshape(codes.shape[0],-1)
+    codes = codes[selected_codes]
+    labels = labels[selected_codes]
+    print(codes.shape)
+
+    # trasformo i dati mediante TSNE ed eseguo il plot
+    tsne = TSNE(2)
+    codes_tsne_conv=tsne.fit_transform(codes)
+    plt.figure(figsize=(8,6))
+    for c in np.unique(labels):
+        plt.plot(codes_tsne_conv[labels==c, 0], codes_tsne_conv[labels==c, 1], 'o', label= c)
+    plt.legend()
+    plt.show()
 
 class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     """ A map-style dataset class used to manipulate a dataset composed by:
@@ -91,12 +133,78 @@ class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/sta
             im = self.transform(im)
         return im, im_label
 
+class AutoencoderConv(pl.LightningModule):
+    """Autoencoder basato su convoluzioni
+        È tutto uguale ad un autoencoder FC eccetto il
+        costruttore e validation_epoch_end
+    
+    """
+    def __init__(self):
+        super(AutoencoderConv, self).__init__()
+
+        self.encoder = nn.Sequential(nn.Conv2d(1,16,3, padding=1),
+                                        nn.AvgPool2d(2),
+                                        nn.ReLU(),
+                                        nn.Conv2d(16,8,3, padding=1),
+                                        nn.AvgPool2d(2),
+                                        nn.ReLU(),
+                                        nn.Conv2d(8,4,3, padding=1),
+                                        nn.ReLU())
+        self.decoder = nn.Sequential(nn.Conv2d(4,8,3, padding=1),
+                                        nn.Upsample(scale_factor=2),
+                                        nn.ReLU(),
+                                        nn.Conv2d(8,16,3, padding=1),
+                                        nn.Upsample(scale_factor=2),
+                                        nn.ReLU(),
+                                        nn.Conv2d(16,1,3, padding=1))
+        # loss utilizzata per il training
+        self.criterion = nn.MSELoss()
+    
+    def forward(self, x):
+        code = self.encoder(x)
+        reconstructed = self.decoder(code)
+        # restituisco sia il codice che l'output ricostruito
+        return code, reconstructed
+
+    def configure_optimizers(self):
+        optimizer = SGD(self.parameters(), lr=0.01, momentum=0.99)
+        return optimizer
+    
+    # questo metodo definisce come effettuare ogni singolo step di training
+    def training_step(self, train_batch, batch_idx):
+        x, _ = train_batch
+        _, reconstructed = self.forward(x)
+        loss = self.criterion(x, reconstructed)
+        self.log('train/loss', loss)
+        return loss
+    
+    # questo metodo definisce come effettuare ogni singolo step di validation
+    def validation_step(self, val_batch, batch_idx):
+        x, _ = val_batch
+        _, reconstructed = self.forward(x)
+        loss = self.criterion(x, reconstructed)
+        self.log('val/loss', loss)
+        if batch_idx==0:
+            return {'inputs':x, 'outputs':reconstructed}
+
+    def validation_epoch_end(self, results):
+        images_in = results[0]['inputs'].view(-1,1,28,28)[:50,...]
+        images_out = results[0]['outputs'].view(-1,1,28,28)[:50,...]
+        self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
+        self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
+
 if __name__ == "__main__":
 
     PATH_DST = join('dataset', 'all_labels.csv')
     PATH_GDRIVE = ''
     NUM_WORKERS = 8
     BATCH_SIZE = 1024
+    NUM_EPOCHS = 1
+    GPUS = 0
+    
+    # mean and dev std of MNIST
+    mean = 0.1307
+    std = 0.3081
 
     dataset_df = pd.read_csv(PATH_DST)
 
@@ -131,7 +239,12 @@ if __name__ == "__main__":
     # print("{} : normMean = {}".format(type, means))
     # print("{} : normstdevs = {}".format(type, stdevs))
 
-    dataset = TrashbinDataset('dataset/all_labels.csv')
+    transform = transforms.Compose([transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((mean,),(std)),
+                                    ])
+
+    dataset = TrashbinDataset('dataset/all_labels.csv', transform=transform)
 
     print("dataset len: %i" % len(dataset))
     # print(dataset.data)   # verifico la permutazione su tutte le label già implementata con il resto della classe
@@ -146,8 +259,23 @@ if __name__ == "__main__":
     print("test_size: %i" % (len(dataset_test)))
 
     # dataset_loader = DataLoader(dataset, batch_size=32)
-
     dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
     dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+    #dataset_validation_loader = ...
 
-    # print(len(dataset_loader))
+    # controllo che la shape sia corettamente 28x28
+    # for a in dataset_train_loader:
+    #     print(a[0].shape)
+    #     break
+    
+
+    printer_helper("START TO MAKE TRAINING")
+
+    logger = TensorBoardLogger("tb_logs", name="convolutional_autoencoder")
+    convolutional_autoencoder = AutoencoderConv()
+    trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger)
+    trainer.fit(convolutional_autoencoder, dataset_train_loader, dataset_test_loader)
+
+    printer_helper("END TRAINING")
+
+    make_TSNE(convolutional_autoencoder, dataset_test_loader)
