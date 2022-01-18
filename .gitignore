@@ -4,6 +4,7 @@ data
 *.DS_Store
 mnist
 fashion
+dataset
 
 */*/grumpifycat.zip
 */*/grumpifycat
