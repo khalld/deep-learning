@@ -199,7 +199,7 @@ if __name__ == "__main__":
     PATH_GDRIVE = ''
     NUM_WORKERS = 8
     BATCH_SIZE = 1024
-    NUM_EPOCHS = 1
+    NUM_EPOCHS = 5
     GPUS = 0
     
     # mean and dev std of MNIST
@@ -239,7 +239,9 @@ if __name__ == "__main__":
     # print("{} : normMean = {}".format(type, means))
     # print("{} : normstdevs = {}".format(type, stdevs))
 
-    transform = transforms.Compose([transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
+    transform = transforms.Compose([
+                                    transforms.Grayscale(num_output_channels=1), #TODO: immagini in bianco e nero x semplificare e farlo uguale al prof
+                                    transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
                                     transforms.ToTensor(),
                                     transforms.Normalize((mean,),(std)),
                                     ])
