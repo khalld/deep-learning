@@ -13,6 +13,7 @@ from torch.optim import SGD
 import pytorch_lightning as pl
 from sklearn.manifold import TSNE
 from pytorch_lightning.loggers import TensorBoardLogger
+from random import choice
 
 def printer_helper(str):
     return print("***** %s *****" % str)
@@ -133,6 +134,53 @@ class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/sta
             im = self.transform(im)
         return im, im_label
 
+class TripletTrashbin(data.Dataset):
+    def __init__(self, root = 'dataset/all_labels.csv', transform = None) -> None:
+#        super().__init__()
+        self.dataset = TrashbinDataset(root, transform=transform)
+        # self.dataset = self.dataset.data    # dipende dalla classe sopra, evito di chiamare un oggetto lungo
+        self.class_to_indices = [np.where(self.dataset.data.label == label)[0] for label in range(3)]  # N delle classi
+
+        self.generate_triplets()
+    
+    def generate_triplets(self):
+        """ Genera le triplete associando ongi elemento del dataset due nuovi elementi. Uno simile e uno dissimile"""
+
+        # verifico che class_to_indices funzioni
+        # print(self.class_to_indices[0])
+        # print(len(self.class_to_indices[0]))
+        # print(len(self.class_to_indices[1]))
+        # print(len(self.class_to_indices[2]))
+        # print(len(self.class_to_indices[0]) + len(self.class_to_indices[1]) + len(self.class_to_indices[2]))
+        # print(len(self.dataset))
+
+        self.similar_idx = []
+        self.dissimilar_idx = []
+
+        for i in range(len(self.dataset)):
+            # classe del primo elemento della tripletta
+            c1 = self.dataset[i][1] # la classe la trovo sempre alla posizione 1 dato il dataset di sopra
+            # indice dell'elemento simile
+            j = np.random.choice(self.class_to_indices[c1])
+            # scelgo una classe diversa a caso
+            diff_class = np.random.choice(list(set(range(3))-{c1}))
+            # campiono dalla classe di ^ per ottenere l'indice dell'elemento dissimile
+            k = np.random.choice(self.class_to_indices[diff_class])
+
+            self.similar_idx.append(j)
+            self.dissimilar_idx.append(k)
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        
+        im1, l1 = self.dataset[index]
+        im2, l2 = self.dataset[self.similar_idx[index]]
+        im3, l3 = self.dataset[self.dissimilar_idx[index]]
+
+        return im1, im2, im3, l1, l2, l3
+
 class AutoencoderConv(pl.LightningModule):
     """Autoencoder basato su convoluzioni
         È tutto uguale ad un autoencoder FC eccetto il
@@ -239,45 +287,65 @@ if __name__ == "__main__":
     # print("{} : normMean = {}".format(type, means))
     # print("{} : normstdevs = {}".format(type, stdevs))
 
-    transform = transforms.Compose([
-                                    transforms.Grayscale(num_output_channels=1), #TODO: immagini in bianco e nero x semplificare e farlo uguale al prof
-                                    transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((mean,),(std)),
-                                    ])
+    # transform = transforms.Compose([
+    #                                 transforms.Grayscale(num_output_channels=1), #TODO: immagini in bianco e nero x semplificare e farlo uguale al prof
+    #                                 transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
+    #                                 transforms.ToTensor(),
+    #                                 transforms.Normalize((mean,),(std)),
+    #                                 ])
 
-    dataset = TrashbinDataset('dataset/all_labels.csv', transform=transform)
+    # dataset = TrashbinDataset('dataset/all_labels.csv', transform=transform)
 
-    print("dataset len: %i" % len(dataset))
-    # print(dataset.data)   # verifico la permutazione su tutte le label già implementata con il resto della classe
+    # print("dataset len: %i" % len(dataset))
+    # # print(dataset.data)   # verifico la permutazione su tutte le label già implementata con il resto della classe
 
-    # splitto il dataset in training e test senza considerare il validaiton
-    train_size = int(0.8 * len(dataset))
-    test_size = len(dataset) - train_size
-    #validation_size =
-    dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
+    # # splitto il dataset in training e test senza considerare il validaiton
+    # train_size = int(0.8 * len(dataset))
+    # test_size = len(dataset) - train_size
+    # #validation_size =
+    # dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    print("train_size: %i" % (len(dataset_train)))
-    print("test_size: %i" % (len(dataset_test)))
+    # print("train_size: %i" % (len(dataset_train)))
+    # print("test_size: %i" % (len(dataset_test)))
 
-    # dataset_loader = DataLoader(dataset, batch_size=32)
-    dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-    #dataset_validation_loader = ...
+    # # dataset_loader = DataLoader(dataset, batch_size=32)
+    # dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+    # dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+    # #dataset_validation_loader = ...
 
-    # controllo che la shape sia corettamente 28x28
-    # for a in dataset_train_loader:
-    #     print(a[0].shape)
-    #     break
+    # # controllo che la shape sia corettamente 28x28
+    # # for a in dataset_train_loader:
+    # #     print(a[0].shape)
+    # #     break
     
 
-    printer_helper("START TO MAKE TRAINING")
+    # printer_helper("START TO MAKE TRAINING")
 
-    logger = TensorBoardLogger("tb_logs", name="convolutional_autoencoder")
-    convolutional_autoencoder = AutoencoderConv()
-    trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger)
-    trainer.fit(convolutional_autoencoder, dataset_train_loader, dataset_test_loader)
+    # logger = TensorBoardLogger("tb_logs", name="convolutional_autoencoder")
+    # convolutional_autoencoder = AutoencoderConv()
+    # trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger)
+    # trainer.fit(convolutional_autoencoder, dataset_train_loader, dataset_test_loader)
 
-    printer_helper("END TRAINING")
+    # printer_helper("END TRAINING")
 
-    make_TSNE(convolutional_autoencoder, dataset_test_loader)
+    # make_TSNE(convolutional_autoencoder, dataset_test_loader)
+
+
+    dataset_triplet = TripletTrashbin()
+    
+    # ***** Visualizzo la rete triplet implmentata ***** TODO: fai meglio
+    
+    # plt.figure(figsize=(18,4))
+    # for ii, i in enumerate(np.random.choice(range(len(dataset_triplet)), 3)):
+    #     plt.subplot(3, 10, ii+1)
+    #     # plt.text(3,10, 'Main element %i' % (i))
+    #     plt.imshow(dataset_triplet[i][0],)
+        
+    #     # plt.text(3,10, 'Similar to %i' % (i))
+    #     plt.subplot(3, 10, ii+11)
+    #     plt.imshow(dataset_triplet[i][1])
+
+    #     # plt.text(3,10, 'Dissimilar to %i' % (i))
+    #     plt.subplot(3, 10, ii+21)
+    #     plt.imshow(dataset_triplet[i][2])
+    # plt.show()
