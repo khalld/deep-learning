@@ -19,6 +19,14 @@ from random import choice
 def printer_helper(str):
     return print("***** %s *****" % str)
 
+def split_into_train_and_test(dataset, train_size_perc=0.8):
+    train_size = int(train_size_perc * len(dataset))
+    test_size = len(dataset) - train_size
+
+    dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return dataset_train, dataset_test
+
 def reverse_norm(image):
     """Allow to show a normalized image"""
     
@@ -37,6 +45,19 @@ def extract_codes(model, loader):
         labels.append(batch[1])
         codes.append(code)
     return np.concatenate(codes), np.concatenate(labels)
+
+def extract_representations(model, loader):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.eval()
+    model.to(device)
+    representations, labels = [], []
+    for batch in loader:
+        x = batch[0].to(device)
+        rep = model(x)
+        rep = rep.detach().to('cpu').numpy()
+        labels.append(batch[1])
+        representations.append(rep)
+    return np.concatenate(representations, np.concatenate(labels))
 
 def make_TSNE(autoencoder: pl.LightningModule, test_loader: DataLoader) -> None:
     codes, labels = extract_codes(autoencoder, test_loader)
@@ -246,11 +267,12 @@ class AutoencoderConv(pl.LightningModule):
         self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
 
 class TripletNetworkTask(pl.LightningModule):
-    def __init__(self, embedding_net, lr=0.01, momentum=0.99, margin=2):
+    def __init__(self, embedding_net, lr=0.01, momentum=0.99, margin=2, num_class=3):
         super(TripletNetworkTask, self).__init__()
         self.save_hyperparameters()
         self.embedding_net = embedding_net
         self.criterion = nn.TripletMarginLoss(margin=margin)
+        self.num_class = num_class
 
     def forward(self, x):
         return self.model(x)
@@ -266,10 +288,22 @@ class TripletNetworkTask(pl.LightningModule):
 
         # calcoliamo la loss
         l = self.criterion(phi_i, phi_j, phi_k)
+
+        self.log('train/loss', l)
+        return l
+
+    def validation_step(self, batch, batch_idx):
+        I_i, I_j, I_k, *_ = batch
+        phi_i = self.embedding_net(I_i)
+        phi_j = self.embedding_net(I_j)
+        phi_k = self.embedding_net(I_k)
+
+        #calcolo la loss
+        l = self.criterion(phi_i, phi_j, phi_k)
         self.log('valid/loss', l)
 
         if batch_idx == 0:
-            self.logger.experiment.add_embedding(phi_i, batch[3], I_i, global_step = self.global_step)
+            self.logger.experiment.add_embedding(phi_i, batch[self.num_class], I_i, global_step = self.global_step)
 
 #TODO: devi farlo diventare un autoencoder Conv
 class EmbeddingNet(nn.Module):
@@ -387,43 +421,3 @@ if __name__ == "__main__":
     # printer_helper("END TRAINING")
 
     # make_TSNE(convolutional_autoencoder, dataset_test_loader)
-
-
-    dataset_triplet = TripletTrashbin(root=PATH_DST, transform=transform)
-    
-    # ***** Visualizzo la rete triplet implmentata ***** TODO: fai meglio
-
-    # plt.figure(figsize=(18,4))
-    # for ii, i in enumerate(np.random.choice(range(len(dataset_triplet)), 3)):
-    #     plt.subplot(3, 10, ii+1)
-    #     # plt.text(3,10, 'Main element %i' % (i))
-    #     plt.imshow(dataset_triplet[i][0],)
-        
-    #     # plt.text(3,10, 'Similar to %i' % (i))
-    #     plt.subplot(3, 10, ii+11)
-    #     plt.imshow(dataset_triplet[i][1])
-
-    #     # plt.text(3,10, 'Dissimilar to %i' % (i))
-    #     plt.subplot(3, 10, ii+21)
-    #     plt.imshow(dataset_triplet[i][2])
-    # plt.show()
-
-    # splitto il dataset in training e test senza considerare il validaiton
-    train_size_triplet = int(0.8 * len(dataset_triplet))
-    test_size_triplet = len(dataset_triplet) - train_size_triplet
-    #validation_size =
-    
-    dataset_train_triplet, dataset_test_triplet = torch.utils.data.random_split(dataset_triplet, [train_size_triplet, test_size_triplet])
-    dataset_train_loader_triplet = DataLoader(dataset_train_triplet, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    dataset_test_loader_triplet = DataLoader(dataset_test_triplet, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-    #dataset_validation_loader = ...
-
-    triplet_trashbin_task = TripletNetworkTask(embedding_net=EmbeddingNet())
-    logger = TensorBoardLogger("metric_logs", name="siamese_triplet")
-    trainer = pl.Trainer(gpus=GPUS, logger=logger, max_epochs=NUM_EPOCHS, progress_bar_refresh_rate=0)
-
-    trainer.fit(triplet_trashbin_task, dataset_train_loader_triplet, dataset_test_loader_triplet)
-
-    # TODO TSNE and other representation models ...
-
-    # salva i risultato del modello e vedi che ti spunta...

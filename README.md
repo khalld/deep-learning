@@ -12,4 +12,4 @@ Manage multiple python version with `pyenv`
 
 Tensorboard:
 
-`tensorboard --logdir tb_logs`
+`tensorboard --logdir FOLDER_NAME`
