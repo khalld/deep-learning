@@ -356,7 +356,6 @@ class Encoder(nn.Module):
         
         return mu, log_var
     
-    
 class Decoder(nn.Module):
     def __init__(self, latent_dim, hidden_dim, output_dim):
         super(Decoder, self).__init__()
@@ -392,7 +391,7 @@ class VAE(pl.LightningModule):
         #apply the trick to sample z
         z = mean + std*epsilon 
         return z
-                
+        
     def forward(self, x):
         #calcoliamo la media e il logaritmo della varianza
         mean, log_var = self.encoder(x)
@@ -471,69 +470,23 @@ if __name__ == "__main__":
         2: 'full'
     }
 
-    # ***** Show some part of dataframe *****
-    # plt.figure(figsize=(15,8))
-    # for ii, i in enumerate(np.random.choice(range(len(dataset_df)), 10)):
-    #     plt.subplot(2,5,ii+1)
-    #     plt.title("Class: %s" % dic_dst[dataset_df['label'][i]])
-    #     plt.imshow(plt.imread(dataset_df['image'][i]),cmap='gray')
-    # plt.show()
-
-
-    # ***** Calculate mean and std *****
-    # means = np.zeros(3)
-    # stdevs = np.zeros(3)
-
-    # for data in dataset_df:
-    #     img = data[0]
-    #     for i in range(3):
-    #         img = np.asarray(img)
-    #         means[i] += img[i, :, :].mean()
-    #         stdevs[i] += img[i, :, :].std()
-
-    # means = np.asarray(means) / dataset_df.__len__()
-    # stdevs = np.asarray(stdevs) / dataset_df.__len__()
-    # print("{} : normMean = {}".format(type, means))
-    # print("{} : normstdevs = {}".format(type, stdevs))
-
+    # TEST PER ADATTARE IL VAE AD IMMAGINI 256 X 256 a 3 canali (partendo da un modello 28 x 28 )
     transform = transforms.Compose([
-                                    transforms.Grayscale(num_output_channels=1), #TODO: immagini in bianco e nero x semplificare e farlo uguale al prof
-                                    transforms.Resize((28,28)),     # resize dell'immagine come in LAB 01 per fare i test TODO da adattare
+                                    transforms.Resize((256,256)),
                                     transforms.ToTensor(),
-                                    transforms.Normalize((mean,),(std)),
+                                    torch.flatten
                                     ])
 
-    # dataset = TrashbinDataset('dataset/all_labels.csv', transform=transform)
+    dataset = TrashbinDataset(csv=PATH_DST, transform=transform)
 
-    # print("dataset len: %i" % len(dataset))
-    # # print(dataset.data)   # verifico la permutazione su tutte le label già implementata con il resto della classe
+    dataset_train, dataset_test = split_into_train_and_test(dataset)
 
-    # # splitto il dataset in training e test senza considerare il validaiton
-    # train_size = int(0.8 * len(dataset))
-    # test_size = len(dataset) - train_size
-    # #validation_size =
-    # dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
+    dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+    dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
-    # print("train_size: %i" % (len(dataset_train)))
-    # print("test_size: %i" % (len(dataset_test)))
+    logger = TensorBoardLogger("vae_logs", name="fc_vae")
 
-    # dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    # dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-    # #dataset_validation_loader = ...
+    trashbin_fc_vae = VAE(784, 512, 128, 784, beta=10)
 
-    # # controllo che la shape sia corettamente 28x28
-    # # for a in dataset_train_loader:
-    # #     print(a[0].shape)
-    # #     break
-    
-
-    # printer_helper("START TO MAKE TRAINING")
-
-    # logger = TensorBoardLogger("tb_logs", name="convolutional_autoencoder")
-    # convolutional_autoencoder = AutoencoderConv()
-    # trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger)
-    # trainer.fit(convolutional_autoencoder, dataset_train_loader, dataset_test_loader)
-
-    # printer_helper("END TRAINING")
-
-    # make_TSNE(convolutional_autoencoder, dataset_test_loader)
+    trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger) 
+    trainer.fit(trashbin_fc_vae, dataset_train_loader, dataset_test_loader)
