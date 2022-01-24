@@ -185,8 +185,8 @@ def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLo
                         max_epochs=epochs, 
                         callbacks=[
                             # TODO: fatto per test
-                                ModelCheckpoint(save_weights_only=True, every_n_epochs=1),    # default save checkpoint every 10 times
-                                GenerateCallback(get_train_images(8, dataset_train=dataset_train), every_n_epochs=1),
+                                ModelCheckpoint(save_weights_only=True),    # default save checkpoint every 10 times
+                                GenerateCallback(get_train_images(8, dataset_train=dataset_train), every_n_epochs=5),
                                 LearningRateMonitor("epoch")], # TODO: aggiungine alte
                         logger=_logger)
                         
@@ -197,7 +197,7 @@ def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLo
     # Check whether pretrained model exists. If yes, load it and skip training
     pretrained_filename = os.path.join(checkpoint_path)
 
-    if os.path.isfile(pretrained_filename):
+    if os.path.isfile(pretrained_filename) and len(pretrained_filename) > 0:
         print("Found pretrained model, loading from: %s" % ( f"{name}_{latent_dim}.ckpt" ))
         model = Autoencoder.load_from_checkpoint(pretrained_filename)
     else:
