@@ -249,11 +249,11 @@ if __name__ == "__main__":
     PATH_GDRIVE = ''
     NUM_WORKERS = 8 # ricordati se significava tutto o niente
     BATCH_SIZE = 32
-    NUM_EPOCHS = 20
+    NUM_EPOCHS = 1
     GPUS = 0
 
     transform = transforms.Compose([
-                                transforms.Resize((64,64)),
+                                transforms.Resize((32,32)),
                                 transforms.ToTensor(),
                                 # torch.flatten # trasforma il tensore ad una dimensione
                                 ])
