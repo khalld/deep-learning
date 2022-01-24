@@ -43,22 +43,26 @@ class Encoder(nn.Module):
         """
         super().__init__()
         c_hid = base_channel_size
+        _TEMP = 256 # old value: 16
         self.net = nn.Sequential(
-            nn.Conv2d(num_input_channels, c_hid, kernel_size=3, padding=1, stride=2), # 32x32 => 16x16
+            nn.Conv2d(num_input_channels, c_hid, kernel_size=3, padding=1, stride=2), # 32x32 => 16x16 || 128X128 => 64 x 64
             act_fn(),
             nn.Conv2d(c_hid, c_hid, kernel_size=3, padding=1),
             act_fn(),
-            nn.Conv2d(c_hid, 2*c_hid, kernel_size=3, padding=1, stride=2), # 16x16 => 8x8
+            nn.Conv2d(c_hid, 2*c_hid, kernel_size=3, padding=1, stride=2), # 16x16 => 8x8 || 64 x 64 => 32x32
             act_fn(),
             nn.Conv2d(2*c_hid, 2*c_hid, kernel_size=3, padding=1),
             act_fn(),
-            nn.Conv2d(2*c_hid, 2*c_hid, kernel_size=3, padding=1, stride=2), # 8x8 => 4x4
+            nn.Conv2d(2*c_hid, 2*c_hid, kernel_size=3, padding=1, stride=2), # 8x8 => 4x4 || 32x32 => 16 x 16 == 256
             act_fn(),
             nn.Flatten(), # Image grid to single feature vector
-            nn.Linear(2*16*c_hid, latent_dim)
+            nn.Linear(2* _TEMP *c_hid, latent_dim)
         )
-    
+
     def forward(self, x):
+        # print("PASSO A -- ENCODER")
+        # print(x.shape)
+        # print("**** ENCODER END \n\n")
         return self.net(x)
 
 class Decoder(nn.Module):
@@ -77,8 +81,9 @@ class Decoder(nn.Module):
         """
         super().__init__()
         c_hid = base_channel_size
+        _TEMP = 256 # old value 16
         self.linear = nn.Sequential(
-            nn.Linear(latent_dim, 2*16*c_hid),
+            nn.Linear(latent_dim, 2 * _TEMP * c_hid),
             act_fn()
         )
         self.net = nn.Sequential(
@@ -93,11 +98,28 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(c_hid, num_input_channels, kernel_size=3, output_padding=1, padding=1, stride=2), # 16x16 => 32x32
             nn.Tanh() # The input images is scaled between -1 and 1, hence the output has to be bounded as well
         )
+
+        # print("****************")
+        # print(self.net)
     
     def forward(self, x):
+
+        # print("PASSO A - INIT DECODER")
+        # print(x.shape)
         x = self.linear(x)
-        x = x.reshape(x.shape[0], -1, 4, 4)
+        # print("PASSO B - LINEAR")
+        # print(x.shape)
+
+        _NEW_VALUE_TEMP = 16 # l'ultimo layer sopra era 4 x 4 noi lo voglaimo 16 x 16 dopo  le modifiche
+
+        x = x.reshape(x.shape[0], -1, _NEW_VALUE_TEMP, _NEW_VALUE_TEMP)
+        # print("PASSO C -- RESHAPE")
+        # print(x.shape)
         x = self.net(x)
+        # print("PASSO D")
+        # print(x.shape)
+        # print("**** DECODER END \n\n")
+
         return x
 
 class Autoencoder(pl.LightningModule):
@@ -108,8 +130,8 @@ class Autoencoder(pl.LightningModule):
                 encoder_class : object = Encoder,
                 decoder_class : object = Decoder,
                 num_input_channels: int = 3, 
-                width: int = 32, 
-                height: int = 32):
+                width: int = 128, 
+                height: int = 128):
         super().__init__()
         # Saving hyperparameters of autoencoder
         self.save_hyperparameters() 
@@ -123,7 +145,14 @@ class Autoencoder(pl.LightningModule):
         """
         The forward function takes in an image and returns the reconstructed image
         """
+        # print("\n\n\nINIT FORWARD OF autoencoder *******\n\n\n")
+
+        # print("X : ")
+        # print(x.shape)
+        # print("\n\n\n")
         z = self.encoder(x)
+        # print("Z code : ")
+        # print(z.shape)
         x_hat = self.decoder(z)
         return x_hat
     
@@ -252,8 +281,10 @@ if __name__ == "__main__":
     NUM_EPOCHS = 1
     GPUS = 0
 
+    # print(Autoencoder(base_channel_size=32, latent_dim=384).example_input_array.shape)
+
     transform = transforms.Compose([
-                                transforms.Resize((32,32)),
+                                transforms.Resize((128,128)),
                                 transforms.ToTensor(),
                                 # torch.flatten # trasforma il tensore ad una dimensione
                                 ])
@@ -264,13 +295,31 @@ if __name__ == "__main__":
     dataset_train, dataset_test = split_into_train_and_test(dataset)
     _, dataset_val = split_into_train_and_test(dataset)
 
-    train_loader = data.DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    val_loader = data.DataLoader(dataset_val, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=False)
-    test_loader = data.DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=False)
+    train_loader = data.DataLoader(dataset_train, batch_size=2, num_workers=NUM_WORKERS, shuffle=True)
+    val_loader = data.DataLoader(dataset_val, batch_size=2, num_workers=NUM_WORKERS, shuffle=False)
+    test_loader = data.DataLoader(dataset_test, batch_size=2, num_workers=NUM_WORKERS, shuffle=False)
 
+
+    # print(train_loader.batch_sampler)
+    # train_features, train_labels = next(iter(train_loader))
+    # print(f"Feature batch shape: {train_features.size()}")
+    # print(f"Labels batch shape: {train_labels.size()}")
+
+    # TODO: Testo separatamente encoder e decoder perché non mi funziona
+    # funziona
+    # model = Encoder(num_input_channels=3, base_channel_size=32, latent_dim=384)
+    # print(model(torch.zeros(384,3,128,128)).shape,)
+    # funziona
+    # model = Decoder(num_input_channels=3, base_channel_size=32, latent_dim=384)
+    # print(model(torch.zeros(384, 384)).shape,)
+    # TODO: vedo cosa vuole l'autoencoder in input || TODO: DA CAPIRE PERCHPé VUOLE BATCH_SIZE 2
+    # temp = Autoencoder(base_channel_size=32, latent_dim=384)
+    # print(temp.example_input_array.shape)
 
     model_dict = {}
     # for latent_dim in [64, 128, 256, 384]:
     for latent_dim in [384]:
-        model_ld, result_ld = train_autoencoder(dataset_train = dataset_train, train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, latent_dim=latent_dim, save_dir='logs/vae', checkpoint_path='', name="VAE_test_", epochs=NUM_EPOCHS, base_channel_size=32)
+        model_ld, result_ld = train_autoencoder(dataset_train = dataset_train, train_loader=train_loader, val_loader=val_loader,
+                                                test_loader=test_loader, latent_dim=latent_dim, save_dir='logs/vae', checkpoint_path='',
+                                                name="VAE_test_", epochs=NUM_EPOCHS, base_channel_size=32)
         model_dict[latent_dim] = {"model": model_ld, "result": result_ld}
