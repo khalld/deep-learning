@@ -30,6 +30,22 @@ def split_into_train_and_test(dataset, train_size_perc=0.8):
 
     return dataset_train, dataset_test
 
+# TODO: DEVI FIXARE!!
+# def split_into_train_test_and_validation(dataset, train_size_perc=0.6, test_size_perc=0.3, validation_size_perc=0.1):
+    
+#     train_size = int(train_size_perc * len(dataset))
+#     test_and_val_size = len(dataset) - train_size
+
+#     test_size = int(test_size_perc * test_and_val_size)
+#     val_size = int(validation_size_perc * test_and_val_size)
+
+#     dataset_train, _ = torch.utils.data.random_split(dataset, [train_size, test_and_val_size])
+#     dataset_test, dataset_val = torch.utils.data.random_split(_, [test_size, val_size])
+
+#     print(dataset_train + dataset_test + dataset_val)
+    
+#     return dataset_train, dataset_test, dataset_val
+
 def reverse_norm(image):
     """Allow to show a normalized image"""
     
@@ -160,9 +176,9 @@ class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/sta
         return im, im_label
 
 class TripletTrashbin(data.Dataset):
-    def __init__(self, root = 'dataset/all_labels.csv', transform = None) -> None:
+    def __init__(self, root = 'dataset/all_labels.csv', transform = None, path_gdrive='') -> None:
 #        super().__init__()
-        self.dataset = TrashbinDataset(root, transform=transform)
+        self.dataset = TrashbinDataset(root, transform=transform, path_gdrive=path_gdrive)
         # self.dataset = self.dataset.data    # dipende dalla classe sopra, evito di chiamare un oggetto lungo
         self.class_to_indices = [np.where(self.dataset.data.label == label)[0] for label in range(3)]  # N delle classi
 
@@ -331,53 +347,6 @@ class EmbeddingNet(nn.Module):
         output = output.view(output.size()[0], -1)
         output = self.fc(output)
         return output
-
-class Encoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dim):
-        super(Encoder, self).__init__()
-
-        # Un semplice encoder con due layer fully connected
-        self.backbone = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU()
-        )
-        # Definiamo inoltre due layer lineari, uno per la media e uno per la varianza
-        self.mean  = nn.Linear(hidden_dim, latent_dim)
-        self.log_var   = nn.Linear(hidden_dim, latent_dim)
-        #assumeremo che l'encoder dia in output il logaritmo della varianza
-        
-    def forward(self, x):
-        #processiamo l'input attraverso i due layer fully connected
-        h = self.backbone(x)
-        #calcoliamo media e varianza
-        mu = self.mean(h)
-        log_var = self.log_var(h)
-        
-        return mu, log_var
-    
-class Decoder(nn.Module):
-    def __init__(self, latent_dim, hidden_dim, output_dim):
-        super(Decoder, self).__init__()
-        #anche in questo caso abbiamo due layer fully connected
-        #seguiti da un layer di output
-        self.backbone = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)
-        )
-        
-    def forward(self, x):
-        #processiamo l'input con l'MLP
-        h = self.backbone(x)
-        #applichiamo una attivazione di tipo
-        #sigmoide per convertire gli output 
-        #tra zero e uno (valori di grigio o probabilità)
-        x_pred = torch.sigmoid(h)
-        return x_pred
 
 class VAE(pl.LightningModule):
     def __init__(self, input_dim, hidden_dim, latent_dim, output_dim, beta):
