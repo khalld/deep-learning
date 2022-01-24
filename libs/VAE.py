@@ -171,16 +171,16 @@ class GenerateCallback(pl.Callback):
             grid = torchvision.utils.make_grid(imgs, nrow=2, normalize=True, range=(-1,1))
             trainer.logger.experiment.add_image("Reconstructions", grid, global_step=trainer.global_step)
 
-def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLoader, val_loader:DataLoader, latent_dim:int, checkpoint_path: str, name: str, epochs:int =10, base_channel_size:int=32,):
+def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLoader, val_loader:DataLoader, latent_dim:int, checkpoint_path: str, save_dir: str, name: str, epochs:int =10, base_channel_size:int=32,):
     # Create a PyTorch Lightning trainer with the generation callback
 
-    _logger = TensorBoardLogger(save_dir=checkpoint_path, name= f"{name}_{latent_dim}")
+    _logger = TensorBoardLogger(save_dir=save_dir, name=f"{name}_{latent_dim}")
 
     GPUS = 1 if str(torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")).startswith("cuda") else 0
 
     print("******* Testing..... current GPU: %d **********" % GPUS)
 
-    trainer = pl.Trainer(default_root_dir=os.path.join(checkpoint_path, f"{name}_{latent_dim}"), 
+    trainer = pl.Trainer(default_root_dir=os.path.join(save_dir, f"{name}_{latent_dim}"), 
                         gpus=GPUS, 
                         max_epochs=epochs, 
                         callbacks=[
@@ -195,7 +195,7 @@ def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLo
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
     
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(checkpoint_path, f"{name}_{latent_dim}.ckpt")
+    pretrained_filename = os.path.join(checkpoint_path)
 
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading from: %s" % ( f"{name}_{latent_dim}.ckpt" ))
