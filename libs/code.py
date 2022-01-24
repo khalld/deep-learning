@@ -17,6 +17,7 @@ import random
 from random import choice
 from torch.optim import Adam
 from torch.nn import functional as F
+import torch.optim as optim
 
 def printer_helper(str):
     return print("***** %s *****" % str)
@@ -307,7 +308,7 @@ class TripletNetworkTask(pl.LightningModule):
         if batch_idx == 0:
             self.logger.experiment.add_embedding(phi_i, batch[self.num_class], I_i, global_step = self.global_step)
 
-#TODO: devi farlo diventare un autoencoder Conv
+#TODO
 class EmbeddingNet(nn.Module):
     def __init__(self) -> None:
         super(EmbeddingNet, self).__init__()
@@ -439,10 +440,19 @@ class VAE(pl.LightningModule):
             return {'inputs': x, 'outputs': x_pred}
         
     def validation_epoch_end(self, results):
-        images_in = results[0]['inputs'].view(-1,1,28,28)[:50,...]
-        images_out = results[0]['outputs'].view(-1,1,28,28)[:50,...]
-        self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
-        self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
+        print(results)
+        print(results[0]['inputs'])
+        print(type(results[0]['inputs']))
+        # images_in = results[0]['inputs'].view(-1,1,28,28)[:50,...]
+        # images_out = results[0]['outputs'].view(-1,1,28,28)[:50,...]
+        # self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
+        # self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
+
+        imgs = torch.stack([results[0]['inputs'], results[0]['outputs']], dim=1).flatten(0,1)
+        grid = make_grid(imgs, nrow=2, normalize=True, range=(-1,1))
+        self.logger.experiment.add_image("Reconstructions", grid, global_step=self.global_step)
+
+
 
 if __name__ == "__main__":
 
@@ -451,7 +461,7 @@ if __name__ == "__main__":
     random.seed(1996)
 
 
-    PATH_DST = join('dataset', 'all_labels.csv')
+    PATH_DST = '../dataset/all_labels.csv'
     PATH_GDRIVE = ''
     NUM_WORKERS = 8
     BATCH_SIZE = 1024
@@ -472,21 +482,39 @@ if __name__ == "__main__":
 
     # TEST PER ADATTARE IL VAE AD IMMAGINI 256 X 256 a 3 canali (partendo da un modello 28 x 28 )
     transform = transforms.Compose([
-                                    transforms.Resize((256,256)),
+                                    # transforms.Grayscale(num_output_channels=1),
+                                    transforms.Resize((28,28)),
                                     transforms.ToTensor(),
                                     torch.flatten
+                                    # torch.flatten # trasforma il tensore ad una dimensione
                                     ])
 
-    dataset = TrashbinDataset(csv=PATH_DST, transform=transform)
+    dataset = TrashbinDataset(csv=PATH_DST, transform=transform, path_gdrive='..')
 
     dataset_train, dataset_test = split_into_train_and_test(dataset)
 
     dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
     dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
+    # mi controllo la shape del dataloader per calcolarmi i layer in formato rgb
+    # for i, data in enumerate(dataset_train_loader, 0):
+    #     # get the inputs
+    #     inputs, labels = data
+    #     inputs = np.array(inputs)
+    #     print(inputs.shape)
+    #     # Run your training process
+    #     print(f'Epoch: {i} | Inputs {inputs.shape} | Labels {labels}')
+    #     break
+
+    # input shape con grayscale n output = 1 --> (1024, 784)
+    # input shape               normale      --> (1024, 2352)
+
+
     logger = TensorBoardLogger("vae_logs", name="fc_vae")
 
-    trashbin_fc_vae = VAE(784, 512, 128, 784, beta=10)
+    # grayscale | torch. flatten TODO: vedi se entrambi i dataloader con grayscale n output=1 e torch.flatten danno lo stesso risultato
+    # trashbin_fc_vae = VAE(784, 512, 128, 784, beta=10)
 
+    trashbin_fc_vae = VAE(784 * 3, 512 * 3, 128 * 3, 784 * 3, beta=10)
     trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger) 
     trainer.fit(trashbin_fc_vae, dataset_train_loader, dataset_test_loader)
