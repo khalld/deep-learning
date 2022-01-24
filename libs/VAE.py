@@ -13,7 +13,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from libs.code import *
 from pytorch_lightning.loggers import TensorBoardLogger
 
-def get_train_images(num):
+
+def get_train_images(num, dataset_train):
     return torch.stack([dataset_train[i][0] for i in range(num)], dim=0)
 
 class Encoder(nn.Module):
@@ -169,5 +170,44 @@ class GenerateCallback(pl.Callback):
             imgs = torch.stack([input_imgs, reconst_imgs], dim=1).flatten(0,1)
             grid = torchvision.utils.make_grid(imgs, nrow=2, normalize=True, range=(-1,1))
             trainer.logger.experiment.add_image("Reconstructions", grid, global_step=trainer.global_step)
+
+def train_autoencoder(dataset_train, train_loader:DataLoader, test_loader:DataLoader, val_loader:DataLoader, latent_dim:int, checkpoint_path: str, name: str, epochs:int =10, base_channel_size:int=32,):
+    # Create a PyTorch Lightning trainer with the generation callback
+
+    _logger = TensorBoardLogger(save_dir=checkpoint_path, name= f"{name}_{latent_dim}")
+
+    GPUS = 1 if str(torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")).startswith("cuda") else 0
+
+    print("******* Testing..... current GPU: %d **********" % GPUS)
+
+    trainer = pl.Trainer(default_root_dir=os.path.join(checkpoint_path, f"{name}_{latent_dim}"), 
+                        gpus=GPUS, 
+                        max_epochs=epochs, 
+                        callbacks=[
+                            # TODO: fatto per test
+                                ModelCheckpoint(save_weights_only=True, every_n_epochs=1),    # default save checkpoint every 10 times
+                                GenerateCallback(get_train_images(8, dataset_train=dataset_train), every_n_epochs=1),
+                                LearningRateMonitor("epoch")], # TODO: aggiungine alte
+                        logger=_logger)
+                        
+
+    trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
+    trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
+    
+    # Check whether pretrained model exists. If yes, load it and skip training
+    pretrained_filename = os.path.join(checkpoint_path, f"{name}_{latent_dim}.ckpt")
+
+    if os.path.isfile(pretrained_filename):
+        print("Found pretrained model, loading from: %s" % ( f"{name}_{latent_dim}.ckpt" ))
+        model = Autoencoder.load_from_checkpoint(pretrained_filename)
+    else:
+        model = Autoencoder(base_channel_size=base_channel_size, latent_dim=latent_dim)
+        trainer.fit(model, train_loader, val_loader)
+    
+    # Test best model on validation and test set
+    val_result = trainer.test(model, test_dataloaders=val_loader, verbose=False)
+    test_result = trainer.test(model, test_dataloaders=test_loader, verbose=False)
+    result = {"test": test_result, "val": val_result}
+    return model, result
 
 # if __name__ == "__main__":

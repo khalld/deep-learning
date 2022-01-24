@@ -1,7 +1,6 @@
 import torch
 from torch.utils import data # necessary to create a map-style dataset https://pytorch.org/docs/stable/data.html
 from os.path import splitext, join
-from PIL import Image
 import numpy as np
 import pandas as pd
 from torchvision import transforms
@@ -29,22 +28,6 @@ def split_into_train_and_test(dataset, train_size_perc=0.8):
     dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     return dataset_train, dataset_test
-
-# TODO: DEVI FIXARE!!
-# def split_into_train_test_and_validation(dataset, train_size_perc=0.6, test_size_perc=0.3, validation_size_perc=0.1):
-    
-#     train_size = int(train_size_perc * len(dataset))
-#     test_and_val_size = len(dataset) - train_size
-
-#     test_size = int(test_size_perc * test_and_val_size)
-#     val_size = int(validation_size_perc * test_and_val_size)
-
-#     dataset_train, _ = torch.utils.data.random_split(dataset, [train_size, test_and_val_size])
-#     dataset_test, dataset_val = torch.utils.data.random_split(_, [test_size, val_size])
-
-#     print(dataset_train + dataset_test + dataset_val)
-    
-#     return dataset_train, dataset_test, dataset_val
 
 def reverse_norm(image):
     """Allow to show a normalized image"""
@@ -97,133 +80,6 @@ def make_TSNE(autoencoder: pl.LightningModule, test_loader: DataLoader) -> None:
         plt.plot(codes_tsne_conv[labels==c, 0], codes_tsne_conv[labels==c, 1], 'o', label= c)
     plt.legend()
     plt.show()
-
-class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
-    """ A map-style dataset class used to manipulate a dataset composed by:
-        image path of trashbin and associated label that describe the available capacity of the trashbin
-            0 : empty trashbin
-            1 : half trashbin
-            2 : full trashbin
-
-        Attributes
-        ----------
-        data : str
-            path of csv file
-        transform : torchvision.transforms
-
-        Methods
-        -------
-        __len__()
-            Return the length of the dataset
-
-        __getitem__(i)
-            Return image, label of i element of dataset  
-    """
-
-    def __init__(self, csv: str=None, transform: transforms=None, path_gdrive: str=''):
-        """ Constructor of the dataset
-            Parameters
-            ----------
-            csv : str
-            path of the dataset
-
-            transform : torchvision.transforms
-            apply transform to the dataset
-
-            path_gdrive: str
-            necessary to apply the prepath in gdrive witouth changing csv
-
-            Raises
-            ------
-            NotImplementedError
-                If no path is passed is not provided a default dataset, default to load the image use only the csv file
-        """
-        
-        if csv is None:
-            raise NotImplementedError("No default dataset is provided")
-        if splitext(csv)[1] != '.csv':
-            raise NotImplementedError("Only .csv files are supported")
-        
-        self.data = pd.read_csv(csv)        # import from csv using pandas
-        self.data = self.data.iloc[np.random.permutation(len(self.data))]       # random auto-permutation of the data
-        self.transform = transform
-        self.path_gdrive = path_gdrive
-
-    def __len__(self):
-        """ Return length of dataset """
-        return len(self.data)
-
-    def __getitem__(self, i=None):
-        """ Return the i-th item of dataset
-
-            Parameters
-            ----------
-            i : int
-            i-th item of dataset
-
-            Raises
-            ------
-            NotImplementedError
-            If i is not a int
-        """
-        if i is None:
-            raise NotImplementedError("Only int type is supported for get the item. None is not allowed")
-        
-        im_path, im_label = self.data.iloc[i]['image'], self.data.iloc[i].label
-        im = Image.open(join(self.path_gdrive,im_path))        # Handle image with Image module from Pillow https://pillow.readthedocs.io/en/stable/reference/Image.html
-        if self.transform is not None:
-            im = self.transform(im)
-        return im, im_label
-
-class TripletTrashbin(data.Dataset):
-    def __init__(self, root = 'dataset/all_labels.csv', transform = None, path_gdrive='') -> None:
-#        super().__init__()
-        self.dataset = TrashbinDataset(root, transform=transform, path_gdrive=path_gdrive)
-        # self.dataset = self.dataset.data    # dipende dalla classe sopra, evito di chiamare un oggetto lungo
-        self.class_to_indices = [np.where(self.dataset.data.label == label)[0] for label in range(3)]  # N delle classi
-
-        self.generate_triplets()
-    
-    def generate_triplets(self):
-        """ Genera le triplete associando ongi elemento del dataset due nuovi elementi. Uno simile e uno dissimile"""
-
-        # verifico che class_to_indices funzioni
-        # print(self.class_to_indices[0])
-        # print(len(self.class_to_indices[0]))
-        # print(len(self.class_to_indices[1]))
-        # print(len(self.class_to_indices[2]))
-        # print(len(self.class_to_indices[0]) + len(self.class_to_indices[1]) + len(self.class_to_indices[2]))
-        # print(len(self.dataset))
-
-        self.similar_idx = []
-        self.dissimilar_idx = []
-
-        printer_helper("Start making triplets...")
-        for i in range(len(self.dataset)):
-            # classe del primo elemento della tripletta
-            c1 = self.dataset[i][1] # la classe la trovo sempre alla posizione 1 dato il dataset di sopra
-            # indice dell'elemento simile
-            j = np.random.choice(self.class_to_indices[c1])
-            # scelgo una classe diversa a caso
-            diff_class = np.random.choice(list(set(range(3))-{c1}))
-            # campiono dalla classe di ^ per ottenere l'indice dell'elemento dissimile
-            k = np.random.choice(self.class_to_indices[diff_class])
-
-            self.similar_idx.append(j)
-            self.dissimilar_idx.append(k)
-
-        print("Triplets process ended")
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, index):
-        
-        im1, l1 = self.dataset[index]
-        im2, l2 = self.dataset[self.similar_idx[index]]
-        im3, l3 = self.dataset[self.dissimilar_idx[index]]
-
-        return im1, im2, im3, l1, l2, l3
 
 class AutoencoderConv(pl.LightningModule):
     """Autoencoder basato su convoluzioni
@@ -348,142 +204,67 @@ class EmbeddingNet(nn.Module):
         output = self.fc(output)
         return output
 
-class VAE(pl.LightningModule):
-    def __init__(self, input_dim, hidden_dim, latent_dim, output_dim, beta):
-        super(VAE, self).__init__()
-        self.encoder = Encoder(input_dim, hidden_dim, latent_dim)
-        self.decoder = Decoder(latent_dim, hidden_dim, output_dim)
-        self.beta = beta
-        
-    def reparameterization_trick(self, mean, std):
-        #perform the reparametrization trick
-        epsilon = std.new(std.shape).normal_() #generate a random epsilon value with the same size as mean and var
-        #apply the trick to sample z
-        z = mean + std*epsilon 
-        return z
-        
-    def forward(self, x):
-        #calcoliamo la media e il logaritmo della varianza
-        mean, log_var = self.encoder(x)
-        std = torch.exp(0.5 * log_var)#calcoliamo la deviazione standard dal logarimo della varianza
-        #campioniamo z mediante il reparametrization trick
-        z = self.reparameterization_trick(mean, std)
-        x_pred = self.decoder(z) #decodifichiamo il valore generato z
-        
-        #restituiamo la predizione, la media e il logaritmo della varianza
-        return x_pred, mean, log_var
+# if __name__ == "__main__":
+
+#     np.random.seed(1996)
+#     torch.manual_seed(1996)
+#     random.seed(1996)
+
+
+#     PATH_DST = '../dataset/all_labels.csv'
+#     PATH_GDRIVE = ''
+#     NUM_WORKERS = 8
+#     BATCH_SIZE = 1024
+#     NUM_EPOCHS = 1
+#     GPUS = 0
     
-    # questo metodo definisce l'optimizer
-    def configure_optimizers(self):
-        optimizer = Adam(self.parameters(), lr=1e-3)
-        return optimizer
-    
-    def training_step(self, train_batch, batch_idx):
-        x, _ = train_batch #scartiamo le etichette
-        x_pred, mean, log_var = self.forward(x)
-        
-        reconstruction_loss = F.binary_cross_entropy(x_pred, x, reduction='sum')
-        kl_loss = - 0.5 * torch.sum(1+ log_var - mean**2 - log_var.exp())
-        
-        loss = reconstruction_loss + self.beta*kl_loss
-        self.log('train/reconstruction_loss', reconstruction_loss.item())
-        self.log('train/kl_loss', kl_loss.item())
-        self.log('train/loss', loss.item())
-        return loss
-        
-    def validation_step(self, val_batch, batch_idx):
-        x, _ = val_batch #scartiamo le etichette
-        x_pred, mean, log_var = self.forward(x)
-        
-        reconstruction_loss = F.binary_cross_entropy(x_pred, x, reduction='sum')
-        kl_loss = - 0.5 * torch.sum(1+ log_var - mean.pow(2) - log_var.exp())
-        
-        #calcoliamo la loss di validation come fatto per la loss di training
-        loss = reconstruction_loss + self.beta*kl_loss
-        self.log('val/reconstruction_loss', reconstruction_loss.item())
-        self.log('val/kl_loss', kl_loss.item())
-        self.log('val/loss', loss.item())
-        
-        #se questo è il primo batch, salviamo le immagini di input e quelle generate per dopo
-        if batch_idx==0:
-            return {'inputs': x, 'outputs': x_pred}
-        
-    def validation_epoch_end(self, results):
-        print(results)
-        print(results[0]['inputs'])
-        print(type(results[0]['inputs']))
-        # images_in = results[0]['inputs'].view(-1,1,28,28)[:50,...]
-        # images_out = results[0]['outputs'].view(-1,1,28,28)[:50,...]
-        # self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
-        # self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
+#     # mean and dev std of MNIST
+#     mean = 0.1307
+#     std = 0.3081
 
-        imgs = torch.stack([results[0]['inputs'], results[0]['outputs']], dim=1).flatten(0,1)
-        grid = make_grid(imgs, nrow=2, normalize=True, range=(-1,1))
-        self.logger.experiment.add_image("Reconstructions", grid, global_step=self.global_step)
+#     dataset_df = pd.read_csv(PATH_DST)
+
+#     dic_dst = {
+#         0: 'empty',
+#         1: 'half',
+#         2: 'full'
+#     }
+
+#     # TEST PER ADATTARE IL VAE AD IMMAGINI 256 X 256 a 3 canali (partendo da un modello 28 x 28 )
+#     transform = transforms.Compose([
+#                                     # transforms.Grayscale(num_output_channels=1),
+#                                     transforms.Resize((28,28)),
+#                                     transforms.ToTensor(),
+#                                     torch.flatten
+#                                     # torch.flatten # trasforma il tensore ad una dimensione
+#                                     ])
+
+#     dataset = TrashbinDataset(csv=PATH_DST, transform=transform, path_gdrive='..')
+
+#     dataset_train, dataset_test = split_into_train_and_test(dataset)
+
+#     dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+#     dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+
+#     # mi controllo la shape del dataloader per calcolarmi i layer in formato rgb
+#     # for i, data in enumerate(dataset_train_loader, 0):
+#     #     # get the inputs
+#     #     inputs, labels = data
+#     #     inputs = np.array(inputs)
+#     #     print(inputs.shape)
+#     #     # Run your training process
+#     #     print(f'Epoch: {i} | Inputs {inputs.shape} | Labels {labels}')
+#     #     break
+
+#     # input shape con grayscale n output = 1 --> (1024, 784)
+#     # input shape               normale      --> (1024, 2352)
 
 
+#     logger = TensorBoardLogger("vae_logs", name="fc_vae")
 
-if __name__ == "__main__":
+#     # grayscale | torch. flatten TODO: vedi se entrambi i dataloader con grayscale n output=1 e torch.flatten danno lo stesso risultato
+#     # trashbin_fc_vae = VAE(784, 512, 128, 784, beta=10)
 
-    np.random.seed(1996)
-    torch.manual_seed(1996)
-    random.seed(1996)
-
-
-    PATH_DST = '../dataset/all_labels.csv'
-    PATH_GDRIVE = ''
-    NUM_WORKERS = 8
-    BATCH_SIZE = 1024
-    NUM_EPOCHS = 1
-    GPUS = 0
-    
-    # mean and dev std of MNIST
-    mean = 0.1307
-    std = 0.3081
-
-    dataset_df = pd.read_csv(PATH_DST)
-
-    dic_dst = {
-        0: 'empty',
-        1: 'half',
-        2: 'full'
-    }
-
-    # TEST PER ADATTARE IL VAE AD IMMAGINI 256 X 256 a 3 canali (partendo da un modello 28 x 28 )
-    transform = transforms.Compose([
-                                    # transforms.Grayscale(num_output_channels=1),
-                                    transforms.Resize((28,28)),
-                                    transforms.ToTensor(),
-                                    torch.flatten
-                                    # torch.flatten # trasforma il tensore ad una dimensione
-                                    ])
-
-    dataset = TrashbinDataset(csv=PATH_DST, transform=transform, path_gdrive='..')
-
-    dataset_train, dataset_test = split_into_train_and_test(dataset)
-
-    dataset_train_loader = DataLoader(dataset_train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    dataset_test_loader = DataLoader(dataset_test, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-
-    # mi controllo la shape del dataloader per calcolarmi i layer in formato rgb
-    # for i, data in enumerate(dataset_train_loader, 0):
-    #     # get the inputs
-    #     inputs, labels = data
-    #     inputs = np.array(inputs)
-    #     print(inputs.shape)
-    #     # Run your training process
-    #     print(f'Epoch: {i} | Inputs {inputs.shape} | Labels {labels}')
-    #     break
-
-    # input shape con grayscale n output = 1 --> (1024, 784)
-    # input shape               normale      --> (1024, 2352)
-
-
-    logger = TensorBoardLogger("vae_logs", name="fc_vae")
-
-    # grayscale | torch. flatten TODO: vedi se entrambi i dataloader con grayscale n output=1 e torch.flatten danno lo stesso risultato
-    # trashbin_fc_vae = VAE(784, 512, 128, 784, beta=10)
-
-    trashbin_fc_vae = VAE(784 * 3, 512 * 3, 128 * 3, 784 * 3, beta=10)
-    trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger) 
-    trainer.fit(trashbin_fc_vae, dataset_train_loader, dataset_test_loader)
+#     trashbin_fc_vae = VAE(784 * 3, 512 * 3, 128 * 3, 784 * 3, beta=10)
+#     trainer = pl.Trainer(max_epochs=NUM_EPOCHS, gpus=GPUS, logger=logger) 
+#     trainer.fit(trashbin_fc_vae, dataset_train_loader, dataset_test_loader)
