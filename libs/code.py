@@ -15,6 +15,8 @@ from sklearn.manifold import TSNE
 from pytorch_lightning.loggers import TensorBoardLogger
 import random
 from random import choice
+from torch.optim import Adam
+from torch.nn import functional as F
 
 def printer_helper(str):
     return print("***** %s *****" % str)
@@ -328,6 +330,120 @@ class EmbeddingNet(nn.Module):
         output = output.view(output.size()[0], -1)
         output = self.fc(output)
         return output
+
+class Encoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim, latent_dim):
+        super(Encoder, self).__init__()
+
+        # Un semplice encoder con due layer fully connected
+        self.backbone = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU()
+        )
+        # Definiamo inoltre due layer lineari, uno per la media e uno per la varianza
+        self.mean  = nn.Linear(hidden_dim, latent_dim)
+        self.log_var   = nn.Linear(hidden_dim, latent_dim)
+        #assumeremo che l'encoder dia in output il logaritmo della varianza
+        
+    def forward(self, x):
+        #processiamo l'input attraverso i due layer fully connected
+        h = self.backbone(x)
+        #calcoliamo media e varianza
+        mu = self.mean(h)
+        log_var = self.log_var(h)
+        
+        return mu, log_var
+    
+    
+class Decoder(nn.Module):
+    def __init__(self, latent_dim, hidden_dim, output_dim):
+        super(Decoder, self).__init__()
+        #anche in questo caso abbiamo due layer fully connected
+        #seguiti da un layer di output
+        self.backbone = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
+        
+    def forward(self, x):
+        #processiamo l'input con l'MLP
+        h = self.backbone(x)
+        #applichiamo una attivazione di tipo
+        #sigmoide per convertire gli output 
+        #tra zero e uno (valori di grigio o probabilità)
+        x_pred = torch.sigmoid(h)
+        return x_pred
+
+class VAE(pl.LightningModule):
+    def __init__(self, input_dim, hidden_dim, latent_dim, output_dim, beta):
+        super(VAE, self).__init__()
+        self.encoder = Encoder(input_dim, hidden_dim, latent_dim)
+        self.decoder = Decoder(latent_dim, hidden_dim, output_dim)
+        self.beta = beta
+        
+    def reparameterization_trick(self, mean, std):
+        #perform the reparametrization trick
+        epsilon = std.new(std.shape).normal_() #generate a random epsilon value with the same size as mean and var
+        #apply the trick to sample z
+        z = mean + std*epsilon 
+        return z
+                
+    def forward(self, x):
+        #calcoliamo la media e il logaritmo della varianza
+        mean, log_var = self.encoder(x)
+        std = torch.exp(0.5 * log_var)#calcoliamo la deviazione standard dal logarimo della varianza
+        #campioniamo z mediante il reparametrization trick
+        z = self.reparameterization_trick(mean, std)
+        x_pred = self.decoder(z) #decodifichiamo il valore generato z
+        
+        #restituiamo la predizione, la media e il logaritmo della varianza
+        return x_pred, mean, log_var
+    
+    # questo metodo definisce l'optimizer
+    def configure_optimizers(self):
+        optimizer = Adam(self.parameters(), lr=1e-3)
+        return optimizer
+    
+    def training_step(self, train_batch, batch_idx):
+        x, _ = train_batch #scartiamo le etichette
+        x_pred, mean, log_var = self.forward(x)
+        
+        reconstruction_loss = F.binary_cross_entropy(x_pred, x, reduction='sum')
+        kl_loss = - 0.5 * torch.sum(1+ log_var - mean**2 - log_var.exp())
+        
+        loss = reconstruction_loss + self.beta*kl_loss
+        self.log('train/reconstruction_loss', reconstruction_loss.item())
+        self.log('train/kl_loss', kl_loss.item())
+        self.log('train/loss', loss.item())
+        return loss
+        
+    def validation_step(self, val_batch, batch_idx):
+        x, _ = val_batch #scartiamo le etichette
+        x_pred, mean, log_var = self.forward(x)
+        
+        reconstruction_loss = F.binary_cross_entropy(x_pred, x, reduction='sum')
+        kl_loss = - 0.5 * torch.sum(1+ log_var - mean.pow(2) - log_var.exp())
+        
+        #calcoliamo la loss di validation come fatto per la loss di training
+        loss = reconstruction_loss + self.beta*kl_loss
+        self.log('val/reconstruction_loss', reconstruction_loss.item())
+        self.log('val/kl_loss', kl_loss.item())
+        self.log('val/loss', loss.item())
+        
+        #se questo è il primo batch, salviamo le immagini di input e quelle generate per dopo
+        if batch_idx==0:
+            return {'inputs': x, 'outputs': x_pred}
+        
+    def validation_epoch_end(self, results):
+        images_in = results[0]['inputs'].view(-1,1,28,28)[:50,...]
+        images_out = results[0]['outputs'].view(-1,1,28,28)[:50,...]
+        self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
+        self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
 
 if __name__ == "__main__":
 
