@@ -18,6 +18,8 @@ from torch.optim import Adam
 from torch.nn import functional as F
 import torch.optim as optim
 
+# DEPRECATI! SE LI DEVI UTILIZZARE METTILI IN UTIL!!
+
 def printer_helper(str):
     return print("***** %s *****" % str)
 
