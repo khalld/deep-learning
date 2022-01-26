@@ -98,7 +98,7 @@ class TripletTrashbin(data.Dataset):
         self.similar_idx = []
         self.dissimilar_idx = []
 
-        cu.printer_helper("Start making triplets...")
+        # cu.printer_helper("Start making triplets...")
 
         for i in range(len(self.dataset)):
             # classe del primo elemento della tripletta
@@ -113,7 +113,7 @@ class TripletTrashbin(data.Dataset):
             self.similar_idx.append(j)
             self.dissimilar_idx.append(k)
 
-        cu.printer_helper("Dataset loaded successfully!")
+        # cu.printer_helper("Dataset loaded successfully!")
 
     def __len__(self):
         return len(self.dataset)

@@ -313,6 +313,7 @@ if __name__ == "__main__":
     # model = Decoder(num_input_channels=3, base_channel_size=32, latent_dim=384)
     # print(model(torch.zeros(384, 384)).shape,)
     # TODO: vedo cosa vuole l'autoencoder in input || TODO: DA CAPIRE PERCHPé VUOLE BATCH_SIZE 2
+    # TODO: ***** NON FUNZIONA IL TRAINING ****************
     # temp = Autoencoder(base_channel_size=32, latent_dim=384)
     # print(temp.example_input_array.shape)
 
