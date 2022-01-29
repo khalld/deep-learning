@@ -1,5 +1,5 @@
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import faiss
 
 def extract_rgb_representations(loader):
