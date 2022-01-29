@@ -24,10 +24,13 @@ class TripletNetworkTask(pl.LightningModule):
         phi_k = self.embedding_net(I_k)
 
         # calcoliamo la loss
-        l = self.criterion(phi_i, phi_j, phi_k)
+        loss_triplet = self.criterion(phi_i, phi_j, phi_k)
+        
+        loss_embedd = phi_i.norm(2) + phi_i.norm(2) + phi_i.norm(2)
+        loss = loss_triplet + 0.001 *loss_embedd
 
-        self.log('train/loss', l)
-        return l
+        self.log('train/loss', loss)
+        return loss
 
     def validation_step(self, batch, batch_idx):
         I_i, I_j, I_k, *_ = batch
@@ -36,8 +39,10 @@ class TripletNetworkTask(pl.LightningModule):
         phi_k = self.embedding_net(I_k)
 
         #calcolo la loss
-        l = self.criterion(phi_i, phi_j, phi_k)
-        self.log('valid/loss', l)
+        loss_triplet = self.criterion(phi_i, phi_j, phi_k)
 
-        if batch_idx == 0:
-            self.logger.experiment.add_embedding(phi_i, batch[self.num_class], I_i, global_step = self.global_step)
+        loss_embedd = phi_i.norm(2) + phi_i.norm(2) + phi_i.norm(2)
+        loss = loss_triplet + 0.001 * loss_embedd
+
+        self.log('valid/loss', loss)
+        return loss
