@@ -17,6 +17,7 @@ class TripletNetworkTask(pl.LightningModule):
     def configure_optimizers(self):
         return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
 
+    # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
         I_i, I_j, I_k, *_ = batch
         phi_i = self.embedding_net(I_i)
