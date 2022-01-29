@@ -5,6 +5,7 @@ data
 mnist
 fashion
 dataset
+logs_old/*
 
 */*/grumpifycat.zip
 */*/grumpifycat
