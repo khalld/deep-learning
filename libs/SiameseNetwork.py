@@ -20,15 +20,26 @@ class TripletNetworkTask(pl.LightningModule):
     # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
         I_i, I_j, I_k, *_ = batch
+
+        print(f"i_i: {I_i}, i_j :{I_j}, i_k:{I_k}")
+
         phi_i = self.embedding_net(I_i)
         phi_j = self.embedding_net(I_j)
         phi_k = self.embedding_net(I_k)
 
+        print(f"phi_i: {phi_i}, phi_j :{phi_j}, phi_k:{phi_k}")
+
         # calcoliamo la loss
         loss_triplet = self.criterion(phi_i, phi_j, phi_k)
+        print(f"loss triplet {loss_triplet}")
         
         loss_embedd = phi_i.norm(2) + phi_i.norm(2) + phi_i.norm(2)
+
+        print(f"loss embedd {loss_embedd}")
+
         loss = loss_triplet + 0.001 *loss_embedd
+        
+        print(f"loss {loss}")
 
         self.log('train/loss', loss)
         return loss
