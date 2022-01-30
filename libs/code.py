@@ -23,14 +23,6 @@ import torch.optim as optim
 def printer_helper(str):
     return print("***** %s *****" % str)
 
-def split_into_train_and_test(dataset, train_size_perc=0.8):
-    train_size = int(train_size_perc * len(dataset))
-    test_size = len(dataset) - train_size
-
-    dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    return dataset_train, dataset_test
-
 def reverse_norm(image):
     """Allow to show a normalized image"""
     

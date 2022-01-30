@@ -1,6 +1,15 @@
 import numpy as np
 from tqdm import tqdm
 import faiss
+import torch
+
+def split_into_train_and_test(dataset, train_size_perc=0.8):
+    train_size = int(train_size_perc * len(dataset))
+    test_size = len(dataset) - train_size
+
+    dataset_train, dataset_test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return dataset_train, dataset_test
 
 def extract_rgb_representations(loader):
     """ Baseline basata su nearest neighbor RGB"""
