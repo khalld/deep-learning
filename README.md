@@ -18,13 +18,9 @@ Tensorboard:
 docker build . (buildo l'immagine (?))
 
 
-PROVA:
-    installare docker con una distro ubuntu
-    come connettermi vs code a docker (developing inside a container)
-    rispetto macchina virtuale (docker ha un overhead minore)
 
-    metti le classi nello script
+Hai testato vari modi per eseguire il training, il migliore è con batch a 128 e no data augmentaion (non fa continuare il dataset. Conviene?)
+- rivediti tutti gli appunti dall'Ipad, integrali se necessario qui
+- pulisci il codice per fare aprtire nuovamente il training però nel modo corretto (metti magari un v2 o che cazzo ne so)
 
-PROVA:
-    Cambiare versione del venv
 
