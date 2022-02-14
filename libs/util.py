@@ -29,6 +29,7 @@ def predict_nn(train_rep, test_rep, train_label):
     index.add(train_rep.astype(np.float32))
     # effettuiamo la ricerca
 
+    # TODO: aggiungi tqdm?
     indices = np.array([index.search(x.reshape(1,-1).astype(np.float32), k=1)[1][0][0] for x in test_rep])
 
     #restituisco le etichette predette
