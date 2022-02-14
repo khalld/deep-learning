@@ -17,8 +17,7 @@ from libs.SiameseNetwork import TripletNetworkTask
 # from libs.code import *
 # from libs.VAE import *
 from sklearn.model_selection import train_test_split
-
-
+import warnings
 class TripletNetworkTaskDebugged(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
     def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
@@ -86,7 +85,9 @@ class TripletNetworkTaskDebugged(pl.LightningModule):
         return loss
 
 if __name__ == "__main__":
-
+    # from https://pytorch-lightning.readthedocs.io/en/latest/guides/speed.html
+    warnings.filterwarnings("ignore", ".*Consider increasing the value of the `num_workers` argument*")
+    
     random.seed(1996)
     np.random.seed(1996)
     pl.seed_everything(1996)
@@ -100,11 +101,9 @@ if __name__ == "__main__":
 
     PATH_DST = 'dataset/all_labels.csv'
     PATH_GDRIVE = ''
-    
-    NUM_WORKERS = 12
-    BATCH_SIZE = 256    # o 128
-    NUM_EPOCHS = 10
-    GPUS = 0
+
+    NUM_WORKERS = 0 # https://pytorch-lightning.readthedocs.io/en/latest/guides/speed.html
+    BATCH_SIZE = 128
     PRETRAINED_MODEL_PATH =  'models/squeezeNet_pretrained.pth'
     num_class = 3
 
@@ -115,68 +114,9 @@ if __name__ == "__main__":
     # TODO: Transformazioni che ho usato per il vecchio progetto.
     # Controllare se posso usarle per il ML
     # perché non mi funzionava il modello?
+    transf = transforms.Compose([transforms.Resize((224,224)), transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
 
-    # transf_train = transforms.Compose([
-    #         transforms.Resize(230), # taglio solo una piccola parte col randomCrop in modo tale da prendere sempre il secchio
-    #         transforms.RandomCrop(224),
-    #         transforms.RandomApply(ModuleList([
-    #             transforms.ColorJitter(brightness=.3, hue=.2),
-    #         ]), p=0.3),
-    #         transforms.RandomGrayscale(p=0.2),
-    #         transforms.RandomHorizontalFlip(p=0.3),
-    #         transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
-    #         transforms.RandomEqualize(p=0.2),
-    #         transforms.ToTensor(),
-    #         transforms.Normalize(mean=mean, std=std)
-    #     ])
-
-    # transf_test = transforms.Compose([
-    #     transforms.Resize(256), 
-    #     transforms.CenterCrop(224), 
-    #     transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-    #     transforms.RandomInvert(p=0.3),
-    #     transforms.RandomHorizontalFlip(p=0.2),
-    #     transforms.RandomGrayscale(p=0.2),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=mean, std=std)
-    # ])
-
-
-    # ----- carico dataset singolo
-
-    # df = pd.read_csv(PATH_DST)
-
-    # df_train, df_test = train_test_split(df, test_size=0.20, random_state=0)
-
-    # print("df_train: {} , df_test: {}, is splitted correctly: {}".format(len(df_train), len(df_test), (len(df) == (len(df_test)+len(df_train)) )))
-
-    # df_train.to_csv("dataset/df_training.csv")
-    # df_test.to_csv("dataset/df_test.csv")
-
-    # dst_train = TrashbinDataset(csv=PATH_DST, transform=transf)
-    # dst_test = TrashbinDataset(csv=PATH_DST, transform=transf)
-
-    # dst_train_loader = DataLoader(dst_train, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=True)
-    # dst_test_loader = DataLoader(dst_test, num_workers=NUM_WORKERS, batch_size=BATCH_SIZE, shuffle=False)
-
-    # ------- estrazione delle rappresentazioni e prime predizioni con nn
-
-    # dst_train_rep_rgb, dst_train_labels = extract_rgb_representations(loader=dst_train_loader)
-    # dst_test_rep_rgb, dst_test_labels = extract_rgb_representations(loader=dst_test_loader)
-
-    # rappresentazioni di rtaining
-
-    # dst_train_rep_rgb.shape
-
-    #  ottengo le perdizioni sul test set usando predict_nn
-
-    # pred_test_label_rgb = predict_nn(dst_train_rep_rgb, dst_test_rep_rgb, dst_train_labels)
-    # print(f"Sample di label: {pred_test_label_rgb}")
-
-    # valuto le performance delle baseline
-
-    # classification_error = evaluate_classification(pred_test_label_rgb, dst_test_labels)
-    # print(f"Classification error: {classification_error:0.2f}")
+    # ---- carico il mio modello custom -------
 
     squeezeNet_1_0 = torch.hub.load('pytorch/vision:v0.10.0', 'squeezenet1_0', pretrained=True)
     # applico le opportune modifiche
@@ -197,9 +137,7 @@ if __name__ == "__main__":
 
     squeezeNet_1_0(torch.zeros(1, 3, 224,224)).shape
 
-    transf = transforms.Compose([transforms.Resize((224,224)), transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
-
-    # carico il dataset in triplette 
+    # --------------- carico il dataset in triplette 
     dst_triplet = TripletTrashbin(root=PATH_DST, transform=transf)
 
     dst_train_triplet, dst_test_triplet = split_into_train_and_test(dst_triplet)
@@ -212,7 +150,13 @@ if __name__ == "__main__":
     triplet_trashbin_task = TripletNetworkTaskDebugged(squeezeNet_1_0, lr=0.002)
     logger = TensorBoardLogger("metric_logs", name="test_trashbin_v1_1",)
 
-    trainer = pl.Trainer(gpus=GPUS, logger = logger, max_epochs = 10, check_val_every_n_epoch = 2 )
+    # TODO: Documentati se puoi fare di meglio !
+    trainer = pl.Trainer(accelerator="cpu",
+                        logger = logger,
+                        max_epochs = 10,
+                        check_val_every_n_epoch = 1,
+                        log_every_n_steps=20,
+                        )
     trainer.fit(triplet_trashbin_task, triplet_dataset_train_loader, triplet_dataset_test_loader)
 
     # Secondo training

@@ -135,30 +135,6 @@ class AutoencoderConv(pl.LightningModule):
         self.logger.experiment.add_image('input_images', make_grid(images_in, nrow=10, normalize=True),self.global_step)
         self.logger.experiment.add_image('generated_images', make_grid(images_out, nrow=10, normalize=True),self.global_step)
 
-#TODO
-class EmbeddingNet(nn.Module):
-    def __init__(self) -> None:
-        super(EmbeddingNet, self).__init__()
-        self.convnet = nn.Sequential(nn.Conv2d(1,32,5), 
-                                    nn.ReLU(),
-                                    nn.MaxPool2d(2,stride=2),
-                                    nn.BatchNorm2d(32),
-                                    nn.Conv2d(32,64,5),
-                                    nn.ReLU(),
-                                    nn.MaxPool2d(2,stride=2))
-        
-        self.fc = nn.Sequential(nn.BatchNorm1d(64*4*4),
-                                nn.Linear(64*4*4, 256),
-                                nn.ReLU(),
-                                nn.BatchNorm1d(256),
-                                nn.Linear(256,128))
-    
-    def forward(self, x):
-        output = self.convnet(x)
-        output = output.view(output.size()[0], -1)
-        output = self.fc(output)
-        return output
-
 # if __name__ == "__main__":
 
 #     np.random.seed(1996)

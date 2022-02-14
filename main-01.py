@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 PATH_DST = 'dataset/all_labels.csv'
 PATH_GDRIVE = ''
 NUM_WORKERS = 12
-BATCH_SIZE = 256    # o 128
+BATCH_SIZE = 256
 NUM_EPOCHS = 10
 GPUS = 0
 PRETRAINED_MODEL_PATH =  'models/squeezeNet_pretrained.pth'
