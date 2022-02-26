@@ -7,6 +7,10 @@ fashion
 dataset
 logs_old/*
 
+
+dataset_fashionmnist/*
+FashionMNIST/*
+
 */*/grumpifycat.zip
 */*/grumpifycat
 
