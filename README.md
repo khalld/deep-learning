@@ -14,10 +14,10 @@ Tensorboard:
 
 `tensorboard --logdir FOLDER_NAME`
 
-
-docker build . (buildo l'immagine (?))
-
-
+## TODO
+- Relazione (inizializzare progetto latex)
+- Allenare triplet
+- Pulire codice
 
 Hai testato vari modi per eseguire il training, il migliore è con batch a 128 e no data augmentaion (non fa continuare il dataset. Conviene?)
 - rivediti tutti gli appunti dall'Ipad, integrali se necessario qui
