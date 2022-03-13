@@ -5,7 +5,13 @@ import numpy as np
 import pandas as pd
 from torchvision import transforms
 import code as cu # custom utils
+from typing import Optional
+import pytorch_lightning as pl
+from torch.utils.data import random_split, DataLoader
+import deprecation
 
+
+@deprecation.deprecated(details="Use TrashbinDataModule that is implemented for LightingDataModule")
 class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     """ A map-style dataset class used to manipulate a dataset composed by:
         image path of trashbin and associated label that describe the available capacity of the trashbin
@@ -82,6 +88,52 @@ class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/sta
         if self.transform is not None:
             im = self.transform(im)
         return im, im_label
+
+
+class TrashbinDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir):
+        super().__init__()
+
+        self.data_dir = data_dir
+
+        # import from csv using pandas
+        self.transform = transforms.Compose([
+            transforms.Grayscale(num_output_channels=1),
+            transforms.Resize((28,28)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+
+    def prepare_data(self):
+        print("Do nothing...")
+
+    def setup(self, stage: Optional[str] = None):
+
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit" or stage is None:
+
+            self.trb_train = TrashbinDataset(join(self.data_dir,'training.csv'), transform=self.transform)
+            self.trb_val = TrashbinDataset(join(self.data_dir,'validation.csv'), transform=self.transform)
+
+            # Optionally...
+            self.dims = tuple(self.trb_train[0][0].shape)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test" or stage is None:
+            self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.transform)
+
+            # Optionally...
+            self.dims = tuple(self.trb_test[0][0].shape)
+
+    def train_dataloader(self):
+        return DataLoader(self.trb_train, batch_size=32, num_workers=12)
+
+    def val_dataloader(self):
+        return DataLoader(self.trb_val, batch_size=32, num_workers=12)
+
+    def test_dataloader(self):
+        return DataLoader(self.trb_test, batch_size=32, num_workers=12)
+
 
 class TripletTrashbin(data.Dataset):
     def __init__(self, root = 'dataset/all_labels.csv', transform = None, path_gdrive='') -> None:
