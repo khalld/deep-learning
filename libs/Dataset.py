@@ -9,9 +9,6 @@ from typing import Optional
 import pytorch_lightning as pl
 from torch.utils.data import random_split, DataLoader
 import deprecation
-
-
-@deprecation.deprecated(details="Use TrashbinDataModule that is implemented for LightingDataModule")
 class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     """ A map-style dataset class used to manipulate a dataset composed by:
         image path of trashbin and associated label that describe the available capacity of the trashbin
@@ -89,16 +86,19 @@ class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/sta
             im = self.transform(im)
         return im, im_label
 
-
 class TrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, batch_size=32, num_workers=12):
         super().__init__()
 
         self.data_dir = data_dir
 
+        self.batch_size = batch_size
+        self.num_classes = 3
+        self.num_workers = num_workers
+
         # import from csv using pandas
         self.transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
+            # transforms.Grayscale(num_output_channels=1),
             transforms.Resize((28,28)),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
@@ -111,7 +111,9 @@ class TrashbinDataModule(pl.LightningDataModule):
 
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
-
+            
+            # TODO : per velocizzare il loading delle immagini. Puoi prevedere di caricare solo 'all_labels' e poi splittare di volta in volta 
+            # randomicamente
             self.trb_train = TrashbinDataset(join(self.data_dir,'training.csv'), transform=self.transform)
             self.trb_val = TrashbinDataset(join(self.data_dir,'validation.csv'), transform=self.transform)
 
@@ -126,15 +128,19 @@ class TrashbinDataModule(pl.LightningDataModule):
             self.dims = tuple(self.trb_test[0][0].shape)
 
     def train_dataloader(self):
-        return DataLoader(self.trb_train, batch_size=32, num_workers=12)
+        return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.trb_val, batch_size=32, num_workers=12)
+        return DataLoader(self.trb_val, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.trb_test, batch_size=32, num_workers=12)
+        return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
 
 
+# TODO: TripletTrashib con lightingModule
+
+
+@deprecation()
 class TripletTrashbin(data.Dataset):
     def __init__(self, root = 'dataset/all_labels.csv', transform = None, path_gdrive='') -> None:
 #        super().__init__()
