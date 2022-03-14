@@ -137,6 +137,54 @@ class TrashbinDataModule(pl.LightningDataModule):
         return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
 
 
+class TripletTrashbinDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir, batch_size=32, num_workers=12):
+        super().__init__()
+
+        self.data_dir = data_dir
+
+        self.batch_size = batch_size
+        self.num_classes = 3
+        self.num_workers = num_workers
+
+        # import from csv using pandas
+        self.transform = transforms.Compose([
+            # transforms.Grayscale(num_output_channels=1),
+            transforms.Resize((28,28)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+
+    def prepare_data(self):
+        self.trb_all = TrashbinDataModule(join(self.data_dir, 'all_labels.csv'), transform=self.transform)
+
+    def setup(self, stage: Optional[str] = None):
+
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit" or stage is None:
+
+            # TODO ....
+            # self.cifar_train, self.cifar_val = random_split(cifar_full, [﻿45000﻿, 5000﻿]﻿)
+
+            
+            # Optionally...
+            self.dims = tuple(self.trb_all[0][0].shape)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test" or stage is None:
+            # self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.transform)
+
+            # Optionally...
+            self.dims = tuple(self.trb_test[0][0].shape)
+
+    def train_dataloader(self):
+        return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.trb_val, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
 # TODO: TripletTrashib con lightingModule
 
 
