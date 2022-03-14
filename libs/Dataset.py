@@ -95,10 +95,11 @@ class TrashbinDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_classes = 3
         self.num_workers = num_workers
+        self.img_size = 28
 
         # import from csv using pandas
         self.transform = transforms.Compose([
-            transforms.Resize((28,28)),
+            transforms.Resize((self.img_size,self.img_size)),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
@@ -182,6 +183,7 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
 
         self.batch_size = batch_size
         self.num_classes = 3
+        self.img_size = 224
         self.num_workers = num_workers
 
         self.trb_all_csv = 'all_labels.csv'
@@ -191,9 +193,8 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
 
         # import from csv using pandas
         self.transform = transforms.Compose([
-            transforms.Resize((28,28)),
+            transforms.Resize((self.img_size,self.img_size)),
             transforms.ToTensor(),
-            # TODO: Controlla che la media sia quella coretta!
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
             )
         ])
