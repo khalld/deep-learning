@@ -136,118 +136,10 @@ class TrashbinDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
 
-
-class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size=32, num_workers=12):
-        super().__init__()
-
-        self.data_dir = data_dir
-
-        self.batch_size = batch_size
-        self.num_classes = 3
-        self.num_workers = num_workers
-
-        # import from csv using pandas
-        self.transform = transforms.Compose([
-            # transforms.Grayscale(num_output_channels=1),
-            transforms.Resize((28,28)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        ])
-
-    def prepare_data(self):
-        self.trb_all = TrashbinDataModule(join(self.data_dir, 'all_labels.csv'), transform=self.transform)
-
-    def setup(self, stage: Optional[str] = None):
-
-        # Assign train/val datasets for use in dataloaders
-        if stage == "fit" or stage is None:
-
-            # TODO ....
-            # self.cifar_train, self.cifar_val = random_split(cifar_full, [﻿45000﻿, 5000﻿]﻿)
-
-            
-            # Optionally...
-            self.dims = tuple(self.trb_all[0][0].shape)
-
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test" or stage is None:
-            # self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.transform)
-
-            # Optionally...
-            self.dims = tuple(self.trb_test[0][0].shape)
-
-    def train_dataloader(self):
-        return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
-
-    def val_dataloader(self):
-        return DataLoader(self.trb_val, batch_size=self.batch_size, num_workers=self.num_workers)
-
-    def test_dataloader(self):
-        return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
-# TODO: TripletTrashib con lightingModule
-
-
-class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size=32, num_workers=12):
-        super().__init__()
-
-        self.data_dir = data_dir
-
-        self.batch_size = batch_size
-        self.num_classes = 3
-        self.num_workers = num_workers
-
-        # import from csv using pandas
-        self.transform = transforms.Compose([
-            # transforms.Grayscale(num_output_channels=1),
-            transforms.Resize((28,28)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        ])
-
-    def prepare_data(self):
-        print("Do nothing...")
-
-    def setup(self, stage: Optional[str] = None):
-
-        # Assign train/val datasets for use in dataloaders
-        if stage == "fit" or stage is None:
-            
-            # self all = ....
-            # splitta randomicamente tra tutti i dataset...
-
-            # randomicamente
-            self.trb_train = TrashbinDataset(join(self.data_dir,'training.csv'), transform=self.transform)
-            self.trb_val = TrashbinDataset(join(self.data_dir,'validation.csv'), transform=self.transform)
-
-            # Optionally...
-            self.dims = tuple(self.trb_train[0][0].shape)
-
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test" or stage is None:
-            self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.transform)
-
-            # Optionally...
-            self.dims = tuple(self.trb_test[0][0].shape)
-
-    def train_dataloader(self):
-        return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
-
-    def val_dataloader(self):
-        return DataLoader(self.trb_val, batch_size=self.batch_size, num_workers=self.num_workers)
-
-    def test_dataloader(self):
-        return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
-
-
-@deprecation()
 class TripletTrashbin(data.Dataset):
-    def __init__(self, root = 'dataset/all_labels.csv', transform = None, path_gdrive='') -> None:
-#        super().__init__()
+    def __init__(self, root, transform = None, path_gdrive='') -> None:
         self.dataset = TrashbinDataset(root, transform=transform, path_gdrive=path_gdrive)
-        # self.dataset = self.dataset.data    # dipende dalla classe sopra, evito di chiamare un oggetto lungo
-        self.class_to_indices = [np.where(self.dataset.data.label == label)[0] for label in range(3)]  # N delle classi
+        self.class_to_idx = [np.where(self.dataset.data.label == label)[0] for label in range(3)]  # N delle classi
 
         self.generate_triplets()
     
@@ -263,16 +155,14 @@ class TripletTrashbin(data.Dataset):
             # classe del primo elemento della tripletta
             c1 = self.dataset[i][1] # la classe la trovo sempre alla posizione 1 dato il dataset di sopra
             # indice dell'elemento simile
-            j = np.random.choice(self.class_to_indices[c1])
+            j = np.random.choice(self.class_to_idx[c1])
             # scelgo una classe diversa a caso
             diff_class = np.random.choice(list(set(range(3))-{c1}))
             # campiono dalla classe di ^ per ottenere l'indice dell'elemento dissimile
-            k = np.random.choice(self.class_to_indices[diff_class])
+            k = np.random.choice(self.class_to_idx[diff_class])
 
             self.similar_idx.append(j)
             self.dissimilar_idx.append(k)
-
-        # cu.printer_helper("Dataset loaded successfully!")
 
     def __len__(self):
         return len(self.dataset)
@@ -284,3 +174,58 @@ class TripletTrashbin(data.Dataset):
         im3, l3 = self.dataset[self.dissimilar_idx[index]]
 
         return im1, im2, im3, l1, l2, l3
+
+class TripletTrashbinDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir, batch_size=32, num_workers=12):
+        super().__init__()
+
+        self.data_dir = data_dir
+
+        self.batch_size = batch_size
+        self.num_classes = 3
+        self.num_workers = num_workers
+
+        self.trb_all_csv = 'all_labels.csv'
+        self.trb_train_csv = 'training.csv'
+        self.trb_val_csv = 'validation.csv'
+        self.trb_test_csv = 'test.csv'
+
+        # import from csv using pandas
+        self.transform = transforms.Compose([
+            # transforms.Grayscale(num_output_channels=1),
+            transforms.Resize((28,28)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+
+    def prepare_data(self):
+        # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
+        print("Do nothing on prepare_data")
+
+    def setup(self, stage: Optional[str] = None):
+
+        # Assign train/val datasets for use in dataloaders
+        if stage == "fit" or stage is None:
+
+            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.transform)
+            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.transform)
+            
+            # Optionally...
+            self.dims = tuple(self.trb_train[0][0].shape)
+
+        # Assign test dataset for use in dataloader(s)
+        if stage == "test" or stage is None:
+            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.transform)
+
+            # Optionally...
+            self.dims = tuple(self.trb_test[0][0].shape)
+
+    def train_dataloader(self):
+        return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.trb_val, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
+
