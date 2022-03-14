@@ -2,6 +2,7 @@ from torch.optim import SGD
 from torch import nn
 import pytorch_lightning as pl
 
+#TODO: copia qui dopo aver testato sul notebook
 class TripletNetworkTask(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
     def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
