@@ -1,17 +1,8 @@
-# Custom ignore
 
+# Custom ignore
 *.idea
-data
-*/lightning_logs
 *.DS_Store
-mnist
-fashion
 dataset
-logs_old/*
-dataset_fashionmnist/*
-FashionMNIST/*
-*/*/grumpifycat.zip
-*/*/grumpifycat
 
 
 # Byte-compiled / optimized / DLL files
