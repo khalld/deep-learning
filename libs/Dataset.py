@@ -9,6 +9,8 @@ from typing import Optional
 import pytorch_lightning as pl
 from torch.utils.data import random_split, DataLoader
 import deprecation
+from torch.nn import ModuleList
+
 class TrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     """ A map-style dataset class used to manipulate a dataset composed by:
         image path of trashbin and associated label that describe the available capacity of the trashbin
@@ -192,12 +194,39 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         self.trb_test_csv = 'test.csv'
 
         # import from csv using pandas
-        self.transform = transforms.Compose([
-            transforms.Resize((self.img_size,self.img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-            )
-        ])
+        # FIXME: DEPRECATA
+        # self.transform = transforms.Compose([
+        #     transforms.Resize((self.img_size,self.img_size)),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+        #     )
+        # ])
+
+        self.train_transform=transforms.Compose([
+                transforms.Resize(230), # taglio solo una piccola parte col randomCrop in modo tale da prendere sempre il secchio
+                transforms.RandomCrop(224),
+                transforms.RandomApply(ModuleList([
+                    transforms.ColorJitter(brightness=.3, hue=.2),
+                ]), p=0.3),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomHorizontalFlip(p=0.3),
+                transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
+                transforms.RandomEqualize(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            ])
+
+        self.test_transform=transforms.Compose([
+                transforms.Resize(256), 
+                transforms.CenterCrop(224),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+                transforms.RandomInvert(p=0.3),
+                transforms.RandomHorizontalFlip(p=0.2),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            ])
+
 
     def prepare_data(self):
         # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
@@ -208,15 +237,15 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
 
-            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.transform)
-            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.transform)
+            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.train_transform)
+            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.train_transform)
             
             # Optionally...
             self.dims = tuple(self.trb_train[0][0].shape)
 
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.transform)
+            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.test_transform)
 
             # Optionally...
             self.dims = tuple(self.trb_test[0][0].shape)

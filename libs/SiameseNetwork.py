@@ -45,43 +45,52 @@ class TripletNetworkTask(pl.LightningModule):
     def configure_optimizers(self):
         # TODO: abilita uno o l'altro in base a se abiliti save_hyparameters()
         return SGD(self.embedding_net.parameters(), self.lr, momentum=self.momentum)
-        # return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
 
     # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
 
         I_i, I_j, I_k, *_ = batch
 
-        phi_i = self.embedding_net(I_i)
-        phi_j = self.embedding_net(I_j)
-        phi_k = self.embedding_net(I_k)
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
 
-        # calcoliamo la loss
-        # TODO: migliora
-        loss_triplet = self.criterion(phi_i, phi_j, phi_k)
-        loss_embedd = phi_i.norm(2) + phi_i.norm(2) + phi_i.norm(2)
+        # TODO: testa con parametri diversi ? Al momento provi questa..
+        tml = nn.TripletMarginLoss(margin=1.0, p=2)
+        tml_output = tml(anchor, positive, negative)
 
-        print(f"loss embedd {loss_embedd}")
+        #TripletMargin Loss
 
-        # FIXME: dopo un po ritorna NaN con squeezenet1_1
-        loss = loss_triplet + 0.001 *loss_embedd
-        
-        print(f"loss {loss}")
+        # TODO: Triplet Maring with distance loss con funzione custom,
+        # magari prova con una custom ?
+        # tmwdl_loss = nn.TripletMarginWithDistanceLoss(distance_function=nn.PairwiseDistance())
+        # tmwdl_output = tmwdl_loss(anchor, positive, negative)
 
-        self.log('train/loss', loss)
-        return loss
+        # TODO: prova al contrario
+        self.log('train/tripletMargin', tml_output)
+        # self.log('train/tripletMarginWithDinstance', tmwdl_output)
+
+        return tml_output
 
     def validation_step(self, batch, batch_idx):
         I_i, I_j, I_k, *_ = batch
-        phi_i = self.embedding_net(I_i)
-        phi_j = self.embedding_net(I_j)
-        phi_k = self.embedding_net(I_k)
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
 
-        #calcolo la loss
-        loss_triplet = self.criterion(phi_i, phi_j, phi_k)
-        
-        loss_embedd = phi_i.norm(2) + phi_i.norm(2) + phi_i.norm(2)
-        loss = loss_triplet + 0.001 * loss_embedd
+        # TODO: testa con parametri diversi ? Al momento provi questa..
+        tml = nn.TripletMarginLoss(margin=1.0, p=2)
+        tml_output = tml(anchor, positive, negative)
 
-        self.log('valid/loss', loss)
-        return loss
+        #TripletMargin Loss
+
+        # TODO: Triplet Maring with distance loss con funzione custom,
+        # magari prova con una custom ?
+        # tmwdl_loss = nn.TripletMarginWithDistanceLoss(distance_function=nn.PairwiseDistance())
+        # tmwdl_output = tmwdl_loss(anchor, positive, negative)
+
+        # TODO: prova al contrario
+        self.log('train/tripletMargin', tml_output)
+        # self.log('train/tripletMarginWithDinstance', tmwdl_output)
+
+        return tml_output
