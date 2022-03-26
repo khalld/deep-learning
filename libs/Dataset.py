@@ -178,10 +178,11 @@ class TripletTrashbin(data.Dataset):
         return im1, im2, im3, l1, l2, l3
 
 class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size=32, num_workers=12):
+    def __init__(self, data_dir, path_gdrive, batch_size=32, num_workers=12):
         super().__init__()
 
         self.data_dir = data_dir
+        self.path_gdrive = path_gdrive
 
         self.batch_size = batch_size
         self.num_classes = 3
@@ -237,15 +238,15 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
 
-            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.train_transform)
-            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.train_transform)
+            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.train_transform, path_gdrive=self.path_gdrive)
+            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.train_transform, path_gdrive=self.path_gdrive)
             
             # Optionally...
             self.dims = tuple(self.trb_train[0][0].shape)
 
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.test_transform)
+            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.test_transform, path_gdrive=self.path_gdrive)
 
             # Optionally...
             self.dims = tuple(self.trb_test[0][0].shape)
