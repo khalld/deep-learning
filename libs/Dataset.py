@@ -97,15 +97,33 @@ class TrashbinDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_classes = 3
         self.num_workers = num_workers
-        self.img_size = 28
         self.path_gdrive = path_gdrive
 
         # import from csv using pandas
-        self.transform = transforms.Compose([
-            transforms.Resize((self.img_size,self.img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        ])
+        self.train_transforms=transforms.Compose([
+                transforms.Resize(230), # taglio solo una piccola parte col randomCrop in modo tale da prendere sempre il secchio
+                transforms.RandomCrop(224),
+                transforms.RandomApply(ModuleList([
+                    transforms.ColorJitter(brightness=.3, hue=.2),
+                ]), p=0.3),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomHorizontalFlip(p=0.3),
+                transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
+                transforms.RandomEqualize(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            ])
+
+        self.test_transforms=transforms.Compose([
+                transforms.Resize(256), 
+                transforms.CenterCrop(224),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+                transforms.RandomInvert(p=0.3),
+                transforms.RandomHorizontalFlip(p=0.2),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            ])
 
     def prepare_data(self):
         print("Do nothing...")
@@ -117,15 +135,15 @@ class TrashbinDataModule(pl.LightningDataModule):
             
             # TODO : per velocizzare il loading delle immagini. Puoi prevedere di caricare solo 'all_labels' e poi splittare di volta in volta 
             # randomicamente
-            self.trb_train = TrashbinDataset(join(self.data_dir,'training.csv'), transform=self.transform, path_gdrive=self.path_gdrive)
-            self.trb_val = TrashbinDataset(join(self.data_dir,'validation.csv'), transform=self.transform, path_gdrive=self.path_gdrive)
+            self.trb_train = TrashbinDataset(join(self.data_dir,'training.csv'), transform=self.train_transforms, path_gdrive=self.path_gdrive)
+            self.trb_val = TrashbinDataset(join(self.data_dir,'validation.csv'), transform=self.train_transforms, path_gdrive=self.path_gdrive)
 
             # Optionally...
             self.dims = tuple(self.trb_train[0][0].shape)
 
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.transform, path_gdrive=self.path_gdrive)
+            self.trb_test = TrashbinDataset(join(self.data_dir,'test.csv'), transform=self.test_transforms, path_gdrive=self.path_gdrive)
 
             # Optionally...
             self.dims = tuple(self.trb_test[0][0].shape)
