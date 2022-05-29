@@ -42,15 +42,14 @@ def extract_codes(model, loader):
         codes.append(code)
     return np.concatenate(codes), np.concatenate(labels)
 
-def extract_representations(model, loader):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def extract_representations(model, loader, device):
     model.eval()
     model.to(device)
     representations, labels = [], []
     for batch in loader:
         x = batch[0].to(device)
         rep = model(x)
-        rep = rep.detach().to('cpu').numpy()
+        rep = rep.detach().to(device).numpy()
         labels.append(batch[1])
         representations.append(rep)
     return np.concatenate(representations, np.concatenate(labels))

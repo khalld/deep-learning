@@ -24,3 +24,8 @@ Hai testato vari modi per eseguire il training, il migliore è con batch a 128 e
 - pulisci il codice per fare aprtire nuovamente il training però nel modo corretto (metti magari un v2 o che cazzo ne so)
 
 
+# Risolvi
+
+/Users/danilo/GitHub/deep-learning/venv/lib/python3.9/site-packages/pytorch_lightning/core/datamodule.py:95: LightningDeprecationWarning: DataModule property `train_transforms` was deprecated in v1.5 and will be removed in v1.7.
+
+

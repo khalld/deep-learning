@@ -49,6 +49,8 @@ class TripletNetworkTask(pl.LightningModule):
     # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
 
+        print("--- beginning training step ---")
+
         I_i, I_j, I_k, *_ = batch
 
         anchor = self.embedding_net(I_i)
@@ -57,7 +59,11 @@ class TripletNetworkTask(pl.LightningModule):
 
         # TODO: testa con parametri diversi ? Al momento provi questa..
         tml = nn.TripletMarginLoss(margin=1.0, p=2)
+        # print("tml " + tml)
+
         tml_output = tml(anchor, positive, negative)
+
+        # print("tml_output " + str(tml_output))
 
         #TripletMargin Loss
 
@@ -80,7 +86,10 @@ class TripletNetworkTask(pl.LightningModule):
 
         # TODO: testa con parametri diversi ? Al momento provi questa..
         tml = nn.TripletMarginLoss(margin=1.0, p=2)
+        
         tml_output = tml(anchor, positive, negative)
+        
+        print("tml_output " + str(tml_output))
 
         #TripletMargin Loss
 

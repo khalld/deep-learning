@@ -197,7 +197,7 @@ class TripletTrashbin(data.Dataset):
         return im1, im2, im3, l1, l2, l3
 
 class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, path_gdrive='', batch_size=32, num_workers=12):
+    def __init__(self, data_dir, path_gdrive='', img_size = 224, batch_size=32, num_workers=12):
         super().__init__()
 
         self.data_dir = data_dir
@@ -205,7 +205,7 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
 
         self.batch_size = batch_size
         self.num_classes = 3
-        self.img_size = 224
+        self.img_size = img_size
         self.num_workers = num_workers
 
         self.trb_all_csv = 'all_labels.csv'
@@ -213,30 +213,35 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         self.trb_val_csv = 'validation.csv'
         self.trb_test_csv = 'test.csv'
 
-        self.train_transforms=transforms.Compose([
-                transforms.Resize(230), # taglio solo una piccola parte col randomCrop in modo tale da prendere sempre il secchio
-                transforms.RandomCrop(224),
-                transforms.RandomApply(ModuleList([
-                    transforms.ColorJitter(brightness=.3, hue=.2),
-                ]), p=0.3),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.RandomHorizontalFlip(p=0.3),
-                transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
-                transforms.RandomEqualize(p=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-            ])
 
-        self.test_transforms=transforms.Compose([
-                transforms.Resize(256), 
-                transforms.CenterCrop(224),
-                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-                transforms.RandomInvert(p=0.3),
-                transforms.RandomHorizontalFlip(p=0.2),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-            ])
+        self.transform = transforms.Compose([transforms.Resize(self.img_size), transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        # self.test_transforms = transforms.Compose([transforms.Resize(self.img_size), transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+
+
+        # self.train_transforms=transforms.Compose([
+        #         transforms.Resize(230), # taglio solo una piccola parte col randomCrop in modo tale da prendere sempre il secchio
+        #         transforms.RandomCrop(self.img_size),
+        #         transforms.RandomApply(ModuleList([
+        #             transforms.ColorJitter(brightness=.3, hue=.2),
+        #         ]), p=0.3),
+        #         transforms.RandomGrayscale(p=0.2),
+        #         transforms.RandomHorizontalFlip(p=0.3),
+        #         transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
+        #         transforms.RandomEqualize(p=0.2),
+        #         transforms.ToTensor(),
+        #         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        #     ])
+
+        # self.test_transforms=transforms.Compose([
+        #         transforms.Resize(self.img_size + 32), # TODO: trova un rapporto migliore?
+        #         transforms.CenterCrop(self.img_size),
+        #         transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+        #         transforms.RandomInvert(p=0.3),
+        #         transforms.RandomHorizontalFlip(p=0.2),
+        #         transforms.RandomGrayscale(p=0.2),
+        #         transforms.ToTensor(),
+        #         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        #     ])
 
 
     def prepare_data(self):
@@ -244,22 +249,26 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         print("Do nothing on prepare_data")
 
     def setup(self, stage: Optional[str] = None):
-
+        print("---Enter in setup---")
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
-
-            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_train_csv), transform=self.train_transforms, path_gdrive=self.path_gdrive)
-            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.train_transforms, path_gdrive=self.path_gdrive)
+            print("***fit***")
+            # trb_full = TripletTrashbin(join(self.data_dir,self.trb_all_csv), transform=self.transform, path_gdrive=self.path_gdrive)
             
-            # Optionally...
-            self.dims = tuple(self.trb_train[0][0].shape)
+            # train_set_size = int(len(trb_full) * 0.8)
+            # valid_set_size = len(trb_full) - train_set_size
+
+            # self.trb_train, self.trb_val = data.random_split(trb_full, [train_set_size, valid_set_size])            
+        
+            self.trb_train = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.transform, path_gdrive=self.path_gdrive)
+            self.trb_val = TripletTrashbin(join(self.data_dir,self.trb_val_csv), transform=self.transform, path_gdrive=self.path_gdrive)
 
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.test_transforms, path_gdrive=self.path_gdrive)
-
+            print("***test***")
+            self.trb_test = TripletTrashbin(join(self.data_dir,self.trb_test_csv), transform=self.transform, path_gdrive=self.path_gdrive)
             # Optionally...
-            self.dims = tuple(self.trb_test[0][0].shape)
+            # self.dims = tuple(self.trb_test[0][0].shape)
 
     def train_dataloader(self):
         return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)
