@@ -2,7 +2,7 @@
 # Custom ignore
 *.idea
 *.DS_Store
-dataset
+dataset/images/*
 
 
 # Byte-compiled / optimized / DLL files
