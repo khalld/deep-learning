@@ -22,6 +22,12 @@ from torchvision.models import squeezenet1_1
 from torch import nn
 import torch
 from torchvision.models import mobilenet_v2
+# or to ignore all warnings that could be false positives
+import warnings
+from pytorch_lightning.utilities.warnings import PossibleUserWarning
+warnings.filterwarnings("ignore", category=PossibleUserWarning)
+from tqdm import tqdm
+import faiss
 
 class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     def __init__(self, csv: str=None, transform: transforms=None):
@@ -80,9 +86,9 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
                     ])
 
 
-    def prepare_data(self):
-        # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
-        print("Do nothing on prepare_data")
+    # def prepare_data(self):
+    #     # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
+    #     print("Do nothing on prepare_data")
 
     def setup(self, stage: Optional[str] = None):
         # Assign train/val datasets for use in dataloaders
@@ -103,15 +109,13 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(self.trb_test, batch_size=self.batch_size, num_workers=self.num_workers)
 
-
 class TripletNetworkTask(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
     def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
         super(TripletNetworkTask, self).__init__()
 
-        # TODO: verifica se deve essere escluso https://pytorch-lightning.readthedocs.io/en/latest/common/hyperparameters.html
-        self.save_hyperparameters()
-        # self.save_hyperparameters(ignore=['embedding_net'])
+        # self.save_hyperparameters()
+        self.save_hyperparameters(ignore=['embedding_net'])
         self.embedding_net = embedding_net
         self.criterion = nn.TripletMarginLoss(margin=margin)
         self.num_class = num_class
@@ -153,6 +157,27 @@ class TripletNetworkTask(pl.LightningModule):
         if batch_idx == 0:
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
 
+def extr_rgb_rep(loader):
+    representations, label = [], []
+    for batch in tqdm(loader, total=len(loader)):
+        representations.append(batch[0].view(batch[0].shape[0], -1).numpy())
+        label.append(batch[1])
+
+    return np.concatenate(representations), np.concatenate(label)
+
+# TODO: verifica sia corretta
+def predict_nn(train_rep, test_rep, train_label):
+    index = faiss.IndexFlatL2(train_rep.shape[1])
+
+    index.add(train_rep.astype(np.float32))
+
+    indices = np.array([index.search(x.reshape(1,-1).astype(np.float32), k=1)[1][0][0] for x in test_rep])
+
+    return train_label[indices].squeeze()
+
+def evaluate_classification(pred_label, gt_label):
+    # TODO: definisci una funzione di valutazione, trovala
+    return np.NaN
 
 if __name__ == "__main__":
 
@@ -164,10 +189,14 @@ if __name__ == "__main__":
 
     data_img_size = 224
 
-    dm = TripletTrashbinDataModule(img_size=data_img_size,num_workers=0)
+    #TODO: prova anche con 1, cerca eventualmente il migliore n di workers per il tuo pc su google
+    n_workers = 0  # os.cpu_count()
 
-    dm.prepare_data()
+    dm = TripletTrashbinDataModule(img_size=data_img_size,num_workers=n_workers)
+    # dm.prepare_data()
     dm.setup()
+
+    # TODO: verifica prestazioni prima del training
 
     mobileNet_v2 = mobilenet_v2()
 
@@ -177,8 +206,14 @@ if __name__ == "__main__":
 
     triplet_mobileNet = TripletNetworkTask(mobileNet_v2)
 
+    # TODO: Verifico usando la libreria la migliore dimensione per il batch
+
     trainer = pl.Trainer(auto_scale_batch_size="power", max_epochs=-1)
     trainer.tune(triplet_mobileNet, datamodule=dm)
+
+    # TODO: verificausando la lbreria il mgliore LR
+    # TODO: predict-nn
+    # TODO: verifica prestazioni dopo
 
     # logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
 
