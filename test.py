@@ -19,6 +19,8 @@ import torch
 from torch.optim import SGD
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import Callback, progress
+from pytorch_lightning.callbacks import ModelCheckpoint
+
 from torchvision.models import squeezenet1_1
 from torch import nn
 import torch
@@ -250,7 +252,7 @@ def evaluate_classification(pred_label, gt_label):
 
     return classification_error
 
-def plot_values_tsne(embedding_net, test_loader):
+def plot_values_tsne(embedding_net, test_loader, figpath = "tsne"):
     test_rep, test_labels = extract_representation(embedding_net, test_loader)
     selected_rep = np.random.choice(len(test_rep), 10000)
     selected_test_rep = test_rep[selected_rep]
@@ -264,7 +266,22 @@ def plot_values_tsne(embedding_net, test_loader):
         plt.plot(rep_tsne[selected_test_labels==c, 0], rep_tsne[selected_test_labels==c, 1], 'o', label=c)
     plt.legend()
     # plt.show()
-    plt.savefig("tsne.png")
+    plt.savefig('{}.png'.format(figpath))
+
+# TODO: la devi testare per vedere se si comporta correttamente
+def evaluating_performance(lighting_module, datamodule, bt_s):
+    train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
+    test_rep_base, test_label = extract_representation(lighting_module, datamodule.test_dataloader())
+
+    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+
+    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
+
+    class_error = evaluate_classification(pred_test_label_base, test_label)
+
+    print('Classification error before training {}'.format(class_error))
+
+    plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader(), 'tsne_{}_batch'.format(bt_s))
 
 if __name__ == "__main__":
 
@@ -307,7 +324,9 @@ if __name__ == "__main__":
     # TODO: trova il modo di fare il grafico del LR trovato!
     # triplet_mobileNet.hparams.lr = new_lr # TODO: da verificare se si deve fare così o col costruttore
 
-    # TODO: **** predict-nn ****
+    # **** predict-nn ****
+
+    print("***** Evaluating performance before training *****")
 
     # Uso il modello non ancora allenato per estrarre le rappresentazione dal training e dal test_set
 
@@ -320,25 +339,35 @@ if __name__ == "__main__":
 
     class_error = evaluate_classification(pred_test_label_base, test_label)
 
-    print('Classification error {}'.format(class_error))
+    print('Classification error before training {}'.format(class_error))
 
-    print("Plotting with TSNE....")
+    plot_values_tsne(triplet_mobileNet.embedding_net, dm.test_dataloader(), 'tsne_{}_batch'.format(data_batch_size))
 
-    plot_values_tsne(triplet_mobileNet.embedding_net, dm.test_dataloader())
+    # ***** Training del modello :
 
-    # TODO: **** verifica prestazioni dopo ****
+    logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
 
-    # logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
+    trainer = pl.Trainer(gpus=0,
+                        max_epochs=2,
+                        callbacks=[progress.TQDMProgressBar()],
+                        logger=logger,
+                        accelerator="auto",
+                        )
 
-    # trainer = pl.Trainer(gpus=0,
-    #                     max_epochs=2,
-    #                     callbacks=[progress.TQDMProgressBar()],
-    #                     logger=logger,
-    #                     accelerator="auto",
-    #                     )
+    trainer.fit(model=triplet_mobileNet, datamodule=dm)
+    trainer.save_checkpoint('ckpt_backup/triplet_mobilenet_{}_batch'.format(data_batch_size) )
 
-    # trainer.fit(model=triplet_mobileNet, datamodule=dm)
+    # **** verifica prestazioni, TSNE e salva grafico dopo il training ****
 
+    print("***** Evaluating performance after training *****")
+
+    # TODO: fai un copia incolla brutale
+
+    # **** Eventuale loading da checkpoint ****    
+
+    # restoring training state --  If you don’t just want to load weights, but instead restore the full training, do the following:
+    # automatically restores model, epoch, step, LR schedulers, apex, etc...
+    # trainer.fit(triplet_mobileNet, ckpt_path="some/path/to/my_checkpoint.ckpt")
 
     # TODO: Aggiungi loading dal checkpoint ed effettua il training per un totale di 10 epoche
     
