@@ -29,6 +29,7 @@ from pytorch_lightning.utilities.warnings import PossibleUserWarning
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 from tqdm import tqdm
 import faiss
+from sklearn.manifold import TSNE
 
 class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     def __init__(self, csv: str=None, transform: transforms=None):
@@ -125,7 +126,7 @@ class TripletNetworkTask(pl.LightningModule):
         self.batch_size = batch_size
 
     def forward(self, x):
-        return self.model(x)
+        return self.embedding_net(x)
 
     def configure_optimizers(self):
         # Dovrei mettere hparams.lr o self.lr?
@@ -211,8 +212,6 @@ class TripletNetworkTaskV2(pl.LightningModule):
         if batch_idx == 0:
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
 
-
-
 def extr_rgb_rep(loader):
     representations, label = [], []
     for batch in tqdm(loader, total=len(loader)):
@@ -221,7 +220,19 @@ def extr_rgb_rep(loader):
 
     return np.concatenate(representations), np.concatenate(label)
 
-# TODO: verifica sia corretta
+def extract_representation(model, loader):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.eval()
+    model.to(device)
+    representations, labels = [], []
+    for batch in tqdm(loader, total=len(loader)):
+        x = batch[0].to(device)
+        rep = model(x)
+        rep = rep.detach().to('cpu').numpy()
+        labels.append(batch[1])
+        representations.append(rep)
+    return np.concatenate(representations), np.concatenate(labels)
+
 def predict_nn(train_rep, test_rep, train_label):
     """Funzione che permette di predire le etichette sul test set utilizzando NN"""
     index = faiss.IndexFlatL2(train_rep.shape[1])
@@ -233,8 +244,27 @@ def predict_nn(train_rep, test_rep, train_label):
     return train_label[indices].squeeze()
 
 def evaluate_classification(pred_label, gt_label):
-    # TODO: definisci una funzione di valutazione, trovala
-    return np.NaN
+    """Misuro la bontà delle predizioni ottenute calcolando la distanza euclidea tra i valori dei label predetti e quelli di groundt truth"""
+    # classification_error = np.sqrt((pred_label - gt_label)**2).sum(1).mean()
+    classification_error = np.sqrt(np.sum(np.square(pred_label-gt_label)))
+
+    return classification_error
+
+def plot_values_tsne(embedding_net, test_loader):
+    test_rep, test_labels = extract_representation(embedding_net, test_loader)
+    selected_rep = np.random.choice(len(test_rep), 10000)
+    selected_test_rep = test_rep[selected_rep]
+    selected_test_labels = test_labels[selected_rep]
+    
+    tsne = TSNE(2)
+    rep_tsne = tsne.fit_transform(selected_test_rep)
+
+    plt.figure(figsize=(8,6))
+    for c in np.unique(selected_test_labels):
+        plt.plot(rep_tsne[selected_test_labels==c, 0], rep_tsne[selected_test_labels==c, 1], 'o', label=c)
+    plt.legend()
+    # plt.show()
+    plt.savefig("tsne.png")
 
 if __name__ == "__main__":
 
@@ -245,6 +275,7 @@ if __name__ == "__main__":
     }
 
     data_img_size = 224
+    data_batch_size = 32
 
     #TODO: prova anche con 1, cerca eventualmente il migliore n di workers per il tuo pc su google
     n_workers = 0  # os.cpu_count()
@@ -259,10 +290,10 @@ if __name__ == "__main__":
 
     mobileNet_v2.classifier = nn.Identity()
 
-    print("**** required for mobilenet_v2: {} ****".format( mobileNet_v2(torch.zeros(1,3,224,224)).shape))
+    print("**** required for mobilenet_v2: {} ****".format( mobileNet_v2(torch.zeros(1,3,data_img_size,data_img_size)).shape))
 
     # TODO: Prova con batch_size 128 e 256 dato che hai provato che vanno bene entrambi!
-    triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001, batch_size=32)
+    triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001, batch_size=data_batch_size)
 
     # **** Verifico usando la libreria la migliore dimensione per il batch *****
 
@@ -277,18 +308,36 @@ if __name__ == "__main__":
     # triplet_mobileNet.hparams.lr = new_lr # TODO: da verificare se si deve fare così o col costruttore
 
     # TODO: **** predict-nn ****
+
+    # Uso il modello non ancora allenato per estrarre le rappresentazione dal training e dal test_set
+
+    train_rep_base, train_label = extract_representation(triplet_mobileNet, dm.train_dataloader())
+    test_rep_base, test_label = extract_representation(triplet_mobileNet, dm.test_dataloader())
+
+    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+
+    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
+
+    class_error = evaluate_classification(pred_test_label_base, test_label)
+
+    print('Classification error {}'.format(class_error))
+
+    print("Plotting with TSNE....")
+
+    plot_values_tsne(triplet_mobileNet.embedding_net, dm.test_dataloader())
+
     # TODO: **** verifica prestazioni dopo ****
 
-    logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
+    # logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
 
-    trainer = pl.Trainer(gpus=0,
-                        max_epochs=2,
-                        callbacks=[progress.TQDMProgressBar()],
-                        logger=logger,
-                        accelerator="auto",
-                        )
+    # trainer = pl.Trainer(gpus=0,
+    #                     max_epochs=2,
+    #                     callbacks=[progress.TQDMProgressBar()],
+    #                     logger=logger,
+    #                     accelerator="auto",
+    #                     )
 
-    trainer.fit(model=triplet_mobileNet, datamodule=dm)
+    # trainer.fit(model=triplet_mobileNet, datamodule=dm)
 
 
     # TODO: Aggiungi loading dal checkpoint ed effettua il training per un totale di 10 epoche
