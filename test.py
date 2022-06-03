@@ -1,3 +1,4 @@
+from posixpath import dirname
 from torch.utils import data # necessary to create a map-style dataset https://pytorch.org/docs/stable/data.html
 from os.path import splitext, join
 from PIL import Image
@@ -111,13 +112,64 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
 
 class TripletNetworkTask(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
+    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3, batch_size=32):
         super(TripletNetworkTask, self).__init__()
 
         # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
         self.embedding_net = embedding_net
         self.criterion = nn.TripletMarginLoss(margin=margin)
+        self.num_class = num_class
+        self.lr = lr
+        self.momentum = momentum
+        self.batch_size = batch_size
+
+    def forward(self, x):
+        return self.model(x)
+
+    def configure_optimizers(self):
+        # Dovrei mettere hparams.lr o self.lr?
+        return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
+        # return SGD(self.embedding_net.parameters(), self.lr, momentum=self.hparams.momentum)
+
+    # Lightning automatically sets the model to training for training_step and to eval for validation.
+    def training_step(self, batch, batch_idx):
+        I_i, _, I_j, _, I_k, _ = batch
+
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
+
+        # calcolo la loss
+        l = self.criterion(anchor, positive, negative)
+
+        self.log('train/tripletMargin', l)
+        
+        return l
+
+    def validation_step(self, batch, batch_idx):
+        I_i, _, I_j, _, I_k, _ = batch
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
+        
+        l = self.criterion(anchor, positive, negative)
+        
+        self.log('valid/tripletMargin', l)
+        
+        if batch_idx == 0:
+            self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
+
+class TripletNetworkTaskV2(pl.LightningModule):
+    # lr uguale a quello del progetto vecchio
+    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
+        super(TripletNetworkTask, self).__init__()
+
+        # self.save_hyperparameters()
+        self.save_hyperparameters(ignore=['embedding_net'])
+        self.embedding_net = embedding_net
+        # TODO: prova anche con L1Loss o MSELoss
+        self.criterion = nn.TripletMarginWithDistanceLoss(margin=margin, distance_function= nn.PairwiseDistance())
         self.num_class = num_class
         self.lr = lr
         self.momentum = momentum
@@ -159,6 +211,8 @@ class TripletNetworkTask(pl.LightningModule):
         if batch_idx == 0:
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
 
+
+
 def extr_rgb_rep(loader):
     representations, label = [], []
     for batch in tqdm(loader, total=len(loader)):
@@ -169,6 +223,7 @@ def extr_rgb_rep(loader):
 
 # TODO: verifica sia corretta
 def predict_nn(train_rep, test_rep, train_label):
+    """Funzione che permette di predire le etichette sul test set utilizzando NN"""
     index = faiss.IndexFlatL2(train_rep.shape[1])
 
     index.add(train_rep.astype(np.float32))
@@ -206,7 +261,8 @@ if __name__ == "__main__":
 
     print("**** required for mobilenet_v2: {} ****".format( mobileNet_v2(torch.zeros(1,3,224,224)).shape))
 
-    triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001)
+    # TODO: Prova con batch_size 128 e 256 dato che hai provato che vanno bene entrambi!
+    triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001, batch_size=32)
 
     # **** Verifico usando la libreria la migliore dimensione per il batch *****
 
@@ -233,6 +289,11 @@ if __name__ == "__main__":
                         )
 
     trainer.fit(model=triplet_mobileNet, datamodule=dm)
+
+
+    # TODO: Aggiungi loading dal checkpoint ed effettua il training per un totale di 10 epoche
+    
+    # TODO: fai altre epoche con una loss diversa!
 
 
 
