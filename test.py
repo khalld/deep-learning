@@ -127,7 +127,9 @@ class TripletNetworkTask(pl.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
+        # Dovrei mettere hparams.lr o self.lr?
         return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
+        # return SGD(self.embedding_net.parameters(), self.lr, momentum=self.hparams.momentum)
 
     # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
@@ -202,30 +204,35 @@ if __name__ == "__main__":
 
     mobileNet_v2.classifier = nn.Identity()
 
-    print("required for mobilenet_v2: {}".format( mobileNet_v2(torch.zeros(1,3,224,224)).shape))
+    print("**** required for mobilenet_v2: {} ****".format( mobileNet_v2(torch.zeros(1,3,224,224)).shape))
 
-    triplet_mobileNet = TripletNetworkTask(mobileNet_v2)
+    triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001)
 
-    # TODO: Verifico usando la libreria la migliore dimensione per il batch
+    # **** Verifico usando la libreria la migliore dimensione per il batch *****
 
-    trainer = pl.Trainer(auto_scale_batch_size="power", max_epochs=-1)
-    trainer.tune(triplet_mobileNet, datamodule=dm)
+    # trainer = pl.Trainer(auto_scale_batch_size="power", max_epochs=-1)
+    # trainer.tune(triplet_mobileNet, datamodule=dm)
 
-    # TODO: verificausando la lbreria il mgliore LR
-    # TODO: predict-nn
-    # TODO: verifica prestazioni dopo
+    # **** verifico usando la libreria per trovare il mgliore LR ****
 
-    # logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
+    # trainer = pl.Trainer(auto_lr_find=True)
+    # lr_finder = trainer.tune(triplet_mobileNet, datamodule=dm)
+    # TODO: trova il modo di fare il grafico del LR trovato!
+    # triplet_mobileNet.hparams.lr = new_lr # TODO: da verificare se si deve fare così o col costruttore
 
+    # TODO: **** predict-nn ****
+    # TODO: **** verifica prestazioni dopo ****
 
-    # trainer = pl.Trainer(gpus=0,
-    #                     max_epochs=1,
-    #                     callbacks=[progress.TQDMProgressBar()],
-    #                     logger=logger,
-    #                     accelerator="auto",
-    #                     )
+    logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
 
-    # trainer.fit(model=triplet_mobileNet, datamodule=dm)
+    trainer = pl.Trainer(gpus=0,
+                        max_epochs=2,
+                        callbacks=[progress.TQDMProgressBar()],
+                        logger=logger,
+                        accelerator="auto",
+                        )
+
+    trainer.fit(model=triplet_mobileNet, datamodule=dm)
 
 
 
