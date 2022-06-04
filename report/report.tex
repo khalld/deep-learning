@@ -63,12 +63,15 @@ La coppia $I_i$, $I_j$ sarà un esempio positivo, e la coppia $I_i$, $I_k$ esemp
 Partendo dal dataset originale (link), si è avuta la necessità di riadattarlo in triplette per farlo funzionare per il modello scelto: ad ogni elemento di ancora verrà associato un elemento positivo ed uno negativo che sarà scelto randomicamente in base alle due classi disponibili (esempio: se l'ancora è 'vuoto', l'elemento negativo sarà 'pieno' o 'mezzo')
 È stato trovato più efficiente, principalmente per effettuare le prove, 'fissare' il dataset in un csv, evitando di creare le triplette dinamicamente. Per generalizzare ancora di più, sarebbe utile eseguire il codice di creazione del dataset più volte e cambiare il datamodule durante il load del checkpoint: infatti .sample() utilizzato pescherà randomicamente dal dataframe un elemento randomico: in questo modo vi è improbabile che le triplette generate siano uguali ad altre.
 
-\section{Scelta del modello}
+\section{Scelta del modello }
 
 Nello studio precedentemente effettuato, sono stati presi in esame alcuni modelli pretrained, in particolare è stata implementata la tecnica del feature extraction che ha ottenuto dei buoni risultati. (elenco dei modelli provati?)
 
-% Partendo dalle considerazioni precedenti, è stato trovato opportuno dunque effettuare il training della rete triplenet utilizzando delle embedding_net pretrained.
-% Inoltre, avendo anche una potenza computazionale migliore rispetto al vecchio progetto, è stato possibile testare il modello con modelli i quali richiedevano molto tempo alla precedente macchina.
+Nonostante la differenza computazionale è stato trovato opportuno effettuare il training su squeezenet v1, che aveva comunque dato il miglior risultato in termini di tempo di esecuzione / risultati.
+
+Ad esempio, l'esecuzione di un epoca di MobileNetV2 richiedeva 1h e 10 minuti contro i 35/40 di squeezeNet. 
+
+Ad esempio su 60 epoche, squeezeNet impiegherebbe circa 1800 minuti contro i 4200 mobileNet (immagini a colori 224x224 )
 
 Per le prove iniziali è stato preso in esame mobilenetV2.
 
@@ -86,7 +89,20 @@ Riguardo al learning rate, inizialmente è stato utilizzato quello del progetto 
 
 \section{Scelta della loss}
 
-Sono state prese in considerazioni due loss....
+Sono state prese in considerazioni due loss differenti, 
+\center{FORMULA N 1 }
+formula 2
+\center{FORMULA N 2}
+
+Presentati con 
+
+Sono stati effettuati dei test per 10 epoche ed i risultati sono stati .....
+
+i differenti TSNE ecc....
+
+
+...... foto 2
+
 
 
 \pagebreak
