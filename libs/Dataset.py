@@ -68,9 +68,9 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
                         # transforms.Lambda(lambda x: x.view(-1))
                     ])
 
-    def prepare_data(self):
-        # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
-        print("Do nothing on prepare_data")
+    # def prepare_data(self):
+    #     # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
+    #     print("Do nothing on prepare_data")
 
     def setup(self, stage: Optional[str] = None):
         # Assign train/val datasets for use in dataloaders
