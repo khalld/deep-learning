@@ -19,6 +19,8 @@ import torch
 from torch.optim import SGD
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import Callback, progress
+from pytorch_lightning.callbacks import ModelCheckpoint
+
 from torchvision.models import squeezenet1_1
 from torch import nn
 import torch
@@ -250,7 +252,7 @@ def evaluate_classification(pred_label, gt_label):
 
     return classification_error
 
-def plot_values_tsne(embedding_net, test_loader):
+def plot_values_tsne(embedding_net, test_loader, figpath = "tsne"):
     test_rep, test_labels = extract_representation(embedding_net, test_loader)
     selected_rep = np.random.choice(len(test_rep), 10000)
     selected_test_rep = test_rep[selected_rep]
@@ -264,7 +266,24 @@ def plot_values_tsne(embedding_net, test_loader):
         plt.plot(rep_tsne[selected_test_labels==c, 0], rep_tsne[selected_test_labels==c, 1], 'o', label=c)
     plt.legend()
     # plt.show()
-    plt.savefig("tsne.png")
+    plt.savefig('{}.png'.format(figpath))
+
+# TODO: la devi testare per vedere se si comporta correttamente
+def evaluating_performance(lighting_module, datamodule, bt_s):
+    # Uso il modello per estrarre le rappresentazione dal training e dal test_set
+
+    train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
+    test_rep_base, test_label = extract_representation(lighting_module, datamodule.test_dataloader())
+
+    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+
+    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
+
+    class_error = evaluate_classification(pred_test_label_base, test_label)
+
+    print('Classification error before training {}'.format(class_error))
+
+    plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader(), 'tsne_{}_batch_after'.format(bt_s))
 
 if __name__ == "__main__":
 
@@ -275,9 +294,9 @@ if __name__ == "__main__":
     }
 
     data_img_size = 224
-    data_batch_size = 32
+    data_batch_size = 256   # lascia questo bs
 
-    #TODO: prova anche con 1, cerca eventualmente il migliore n di workers per il tuo pc su google
+    # otherwise, return warning
     n_workers = 0  # os.cpu_count()
 
     dm = TripletTrashbinDataModule(img_size=data_img_size,num_workers=n_workers)
@@ -292,7 +311,6 @@ if __name__ == "__main__":
 
     print("**** required for mobilenet_v2: {} ****".format( mobileNet_v2(torch.zeros(1,3,data_img_size,data_img_size)).shape))
 
-    # TODO: Prova con batch_size 128 e 256 dato che hai provato che vanno bene entrambi!
     triplet_mobileNet = TripletNetworkTask(mobileNet_v2, lr=0.00000001, batch_size=data_batch_size)
 
     # **** Verifico usando la libreria la migliore dimensione per il batch *****
@@ -307,38 +325,37 @@ if __name__ == "__main__":
     # TODO: trova il modo di fare il grafico del LR trovato!
     # triplet_mobileNet.hparams.lr = new_lr # TODO: da verificare se si deve fare così o col costruttore
 
-    # TODO: **** predict-nn ****
+    # **** predict-nn ****
+
+    print("***** Evaluating performance before training *****")
 
     # Uso il modello non ancora allenato per estrarre le rappresentazione dal training e dal test_set
+    
+    # evaluating_performance(triplet_mobileNet, dm, data_batch_size)
 
-    train_rep_base, train_label = extract_representation(triplet_mobileNet, dm.train_dataloader())
-    test_rep_base, test_label = extract_representation(triplet_mobileNet, dm.test_dataloader())
+    # ***** Training del modello :
 
-    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+    logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
 
-    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
-
-    class_error = evaluate_classification(pred_test_label_base, test_label)
-
-    print('Classification error {}'.format(class_error))
-
-    print("Plotting with TSNE....")
-
-    plot_values_tsne(triplet_mobileNet.embedding_net, dm.test_dataloader())
-
-    # TODO: **** verifica prestazioni dopo ****
-
-    # logger = TensorBoardLogger("metric_logs", name="siamese_mobilenet_v1")
-
-    # trainer = pl.Trainer(gpus=0,
-    #                     max_epochs=2,
-    #                     callbacks=[progress.TQDMProgressBar()],
-    #                     logger=logger,
-    #                     accelerator="auto",
-    #                     )
+    trainer = pl.Trainer(gpus=0,
+                        max_epochs=2,
+                        callbacks=[progress.TQDMProgressBar()],
+                        logger=logger,
+                        accelerator="auto",
+                        )
 
     # trainer.fit(model=triplet_mobileNet, datamodule=dm)
+    # trainer.save_checkpoint('ckpt_backup/triplet_mobilenet_{}_batch.ckpt'.format(data_batch_size) )
 
+    # **** verifica prestazioni, TSNE e salva grafico dopo il training ****
+
+    # restoring training state --  If you don’t just want to load weights, but instead restore the full training, do the following:
+    # automatically restores model, epoch, step, LR schedulers, apex, etc...
+    trainer.fit(model=triplet_mobileNet, datamodule=dm, ckpt_path="ckpt_backup/triplet_mobilenet_256_batch.ckpt")
+
+    print("***** Evaluating performance after training *****")
+
+    evaluating_performance(triplet_mobileNet, dm, data_batch_size)
 
     # TODO: Aggiungi loading dal checkpoint ed effettua il training per un totale di 10 epoche
     
