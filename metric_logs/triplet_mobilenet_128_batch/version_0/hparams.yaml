@@ -1,0 +1,5 @@
+batch_size: 128
+lr: 1.0e-08
+margin: 2
+momentum: 0.99
+num_class: 3
