@@ -65,8 +65,8 @@ class TripletNetworkTask(pl.LightningModule):
 
 class TripletNetworkTaskV2(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3):
-        super(TripletNetworkTask, self).__init__()
+    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3, batch_size=32):
+        super(TripletNetworkTaskV2, self).__init__()
 
         # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
@@ -75,15 +75,13 @@ class TripletNetworkTaskV2(pl.LightningModule):
         self.num_class = num_class
         self.lr = lr
         self.momentum = momentum
-        self.batch_size = 32
+        self.batch_size = batch_size
 
     def forward(self, x):
-        return self.model(x)
+        return self.embedding_net(x)
 
     def configure_optimizers(self):
-        # Dovrei mettere hparams.lr o self.lr?
         return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
-        # return SGD(self.embedding_net.parameters(), self.lr, momentum=self.hparams.momentum)
 
     # Lightning automatically sets the model to training for training_step and to eval for validation.
     def training_step(self, batch, batch_idx):
