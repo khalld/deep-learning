@@ -151,7 +151,7 @@ def evaluate_classification(pred_label, gt_label):
 
     return classification_error
 
-def plot_values_tsne(embedding_net, test_loader, figpath = "tsne"):
+def plot_values_tsne(embedding_net, test_loader):
     test_rep, test_labels = extract_representation(embedding_net, test_loader)
     selected_rep = np.random.choice(len(test_rep), 10000)
     selected_test_rep = test_rep[selected_rep]
@@ -164,11 +164,10 @@ def plot_values_tsne(embedding_net, test_loader, figpath = "tsne"):
     for c in np.unique(selected_test_labels):
         plt.plot(rep_tsne[selected_test_labels==c, 0], rep_tsne[selected_test_labels==c, 1], 'o', label=c)
     plt.legend()
-    plt.savefig('{}.png'.format(figpath))
     plt.show()
 
 # TODO: la devi testare per vedere se si comporta correttamente
-def evaluating_performance(lighting_module, datamodule, bt_s):
+def evaluating_performance(lighting_module, datamodule):
     # Uso il modello per estrarre le rappresentazione dal training e dal test_set
 
     train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
@@ -180,6 +179,6 @@ def evaluating_performance(lighting_module, datamodule, bt_s):
 
     class_error = evaluate_classification(pred_test_label_base, test_label)
 
-    print('Classification error before training {}'.format(class_error))
+    print('Classification error {}'.format(class_error))
 
-    plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader(), 'tsne_{}_batch_after'.format(bt_s))
+    plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
