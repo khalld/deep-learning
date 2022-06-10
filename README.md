@@ -1,4 +1,4 @@
-# deep-learning
+# Triplet Network Trashbin Classifier
 
 Manage multiple python version with `pyenv`
 
@@ -13,19 +13,3 @@ Manage multiple python version with `pyenv`
 Tensorboard:
 
 `tensorboard --logdir FOLDER_NAME`
-
-## TODO
-- Relazione (inizializzare progetto latex)
-- Allenare triplet
-- Pulire codice
-
-Hai testato vari modi per eseguire il training, il migliore è con batch a 128 e no data augmentaion (non fa continuare il dataset. Conviene?)
-- rivediti tutti gli appunti dall'Ipad, integrali se necessario qui
-- pulisci il codice per fare aprtire nuovamente il training però nel modo corretto (metti magari un v2 o che cazzo ne so)
-
-
-# Risolvi
-
-/Users/danilo/GitHub/deep-learning/venv/lib/python3.9/site-packages/pytorch_lightning/core/datamodule.py:95: LightningDeprecationWarning: DataModule property `train_transforms` was deprecated in v1.5 and will be removed in v1.7.
-
-
