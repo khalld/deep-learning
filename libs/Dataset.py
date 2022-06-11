@@ -11,6 +11,8 @@ from torchvision import transforms
 import pytorch_lightning as pl
 from typing import Optional
 from torch.utils.data import random_split, DataLoader
+from torch.nn import ModuleList
+
 class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
     def __init__(self, csv: str=None, transform: transforms=None):
 
@@ -49,7 +51,7 @@ class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/d
         return im_anchor, im_label_anchor, im_pos, im_label_pos, im_neg, im_label_neg
 
 class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, img_size, batch_size=32, num_workers=0):
+    def __init__(self, img_size, batch_size=32, num_workers=0, data_augmentation=True):
         super().__init__()
 
         self.batch_size = batch_size
@@ -60,27 +62,63 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
         self.trb_train_csv = 'dataset/triplet_training.csv'
         self.trb_val_csv = 'dataset/triplet_validation.csv'
         self.trb_test_csv = 'dataset/triplet_test.csv'
+        self.data_augmentation = data_augmentation
 
-        self.transform = transforms.Compose([
-                        transforms.Resize((self.img_size, self.img_size)),
-                        transforms.ToTensor(),
-                        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                        # transforms.Lambda(lambda x: x.view(-1))
-                    ])
+        if data_augmentation:
+            self.train_transform = transforms.Compose([
+                transforms.Resize(self.img_size + 6),
+                transforms.RandomCrop(self.img_size),
+                transforms.RandomApply(ModuleList([
+                    transforms.ColorJitter(brightness=.3, hue=.2),
+                ]), p=0.3),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomHorizontalFlip(p=0.3),
+                transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
+                transforms.RandomEqualize(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ])
+
+            self.test_transform = transforms.Compose([
+                transforms.Resize(self.img_size + 32), 
+                transforms.CenterCrop(self.img_size),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+                transforms.RandomInvert(p=0.3),
+                transforms.RandomHorizontalFlip(p=0.2),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ])
+
+        else:    
+            self.transform = transforms.Compose([
+                transforms.Resize((self.img_size, self.img_size)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ])
+
 
     # def prepare_data(self):
-    #     # TODO: genera train e val randomicamente, al momento li tieni fissi così risparmi memoria
-    #     print("Do nothing on prepare_data")
+        # do nothing
 
     def setup(self, stage: Optional[str] = None):
-        # Assign train/val datasets for use in dataloaders
-        if stage == "fit" or stage is None:          
-            self.trb_train = TripletTrashbinDataset(self.trb_train_csv, transform=self.transform)
-            self.trb_val = TripletTrashbinDataset(self.trb_val_csv, transform=self.transform)
 
-        # Assign test dataset for use in dataloader(s)
-        if stage == "test" or stage is None:
-            self.trb_test = TripletTrashbinDataset(self.trb_test_csv, transform=self.transform)
+        if self.data_augmentation:
+            # Assign train/val datasets for use in dataloaders
+            if stage == "fit" or stage is None:
+                self.trb_train = TripletTrashbinDataset(self.trb_train_csv, transform=self.train_transform)
+                self.trb_val = TripletTrashbinDataset(self.trb_val_csv, transform=self.train_transform)
+
+            # Assign test dataset for use in dataloader(s)
+            if stage == "test" or stage is None:
+                self.trb_test = TripletTrashbinDataset(self.trb_test_csv, transform=self.test_transform)
+        else:
+            if stage == "fit" or stage is None:
+                self.trb_train = TripletTrashbinDataset(self.trb_train_csv, transform=self.transform)
+                self.trb_val = TripletTrashbinDataset(self.trb_val_csv, transform=self.transform)
+
+            if stage == "test" or stage is None:
+                self.trb_test = TripletTrashbinDataset(self.trb_test_csv, transform=self.transform)
 
     def train_dataloader(self):
         return DataLoader(self.trb_train, batch_size=self.batch_size, num_workers=self.num_workers)

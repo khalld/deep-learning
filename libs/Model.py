@@ -12,70 +12,23 @@ warnings.filterwarnings("ignore", category=PossibleUserWarning)
 from tqdm import tqdm
 import faiss
 from sklearn.manifold import TSNE
+# from libs.Dataset import TripletTrashbinDataModule
 
-class TripletNetworkTask(pl.LightningModule):
+class TripletNetwork(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3, batch_size=32):
-        super(TripletNetworkTask, self).__init__()
+    def __init__(self, embedding_net, dm_val_epoch_end, lr=0.002, momentum=0.99, num_class=3, batch_size=32, criterion=nn.TripletMarginLoss(margin=2)):
+        super(TripletNetwork, self).__init__()
 
         # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
         self.embedding_net = embedding_net
-        self.criterion = nn.TripletMarginLoss(margin=margin)
+        self.criterion = criterion
+
         self.num_class = num_class
         self.lr = lr
         self.momentum = momentum
         self.batch_size = batch_size
-
-    def forward(self, x):
-        return self.embedding_net(x)
-
-    def configure_optimizers(self):
-        # Dovrei mettere hparams.lr o self.lr?
-        return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
-        # return SGD(self.embedding_net.parameters(), self.lr, momentum=self.hparams.momentum)
-
-    # Lightning automatically sets the model to training for training_step and to eval for validation.
-    def training_step(self, batch, batch_idx):
-        I_i, _, I_j, _, I_k, _ = batch
-
-        anchor = self.embedding_net(I_i)
-        positive = self.embedding_net(I_j)
-        negative = self.embedding_net(I_k)
-
-        # calcolo la loss
-        l = self.criterion(anchor, positive, negative)
-
-        self.log('train/tripletMargin', l)
-        
-        return l
-
-    def validation_step(self, batch, batch_idx):
-        I_i, _, I_j, _, I_k, _ = batch
-        anchor = self.embedding_net(I_i)
-        positive = self.embedding_net(I_j)
-        negative = self.embedding_net(I_k)
-        
-        l = self.criterion(anchor, positive, negative)
-        
-        self.log('valid/tripletMargin', l)
-        
-        if batch_idx == 0:
-            self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
-
-class TripletNetworkTaskV2(pl.LightningModule):
-    # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, lr=0.002, momentum=0.99, margin=2, num_class=3, batch_size=32):
-        super(TripletNetworkTaskV2, self).__init__()
-
-        # self.save_hyperparameters()
-        self.save_hyperparameters(ignore=['embedding_net'])
-        self.embedding_net = embedding_net
-        self.criterion = nn.TripletMarginWithDistanceLoss(margin=margin, distance_function= nn.PairwiseDistance())
-        self.num_class = num_class
-        self.lr = lr
-        self.momentum = momentum
-        self.batch_size = batch_size
+        self.dm_val_epoch_end = dm_val_epoch_end
 
     def forward(self, x):
         return self.embedding_net(x)
@@ -94,7 +47,8 @@ class TripletNetworkTaskV2(pl.LightningModule):
         # calcolo la loss
         l = self.criterion(anchor, positive, negative)
 
-        self.log('train/tripletMarginWithDistance', l)
+        # logs metrics for each training_step, and the average across the epoch, to the progress bar and logger
+        self.log('train/loss', l) #, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return l
 
@@ -106,7 +60,7 @@ class TripletNetworkTaskV2(pl.LightningModule):
         
         l = self.criterion(anchor, positive, negative)
         
-        self.log('valid/tripletMarginWithDistance', l)
+        self.log('valid/loss', l)
         
         if batch_idx == 0:
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
@@ -180,3 +134,20 @@ def evaluating_performance(lighting_module, datamodule):
     print('Classification error {}'.format(class_error))
 
     plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
+
+
+def evaluating_performance_2(lighting_module, datamodule):
+    # Uso il modello per estrarre le rappresentazione dal training e dal test_set
+
+    train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
+    test_rep_base, test_label = extract_representation(lighting_module, datamodule.test_dataloader())
+
+    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+
+    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
+
+    class_error = evaluate_classification(pred_test_label_base, test_label)
+
+    return class_error
+
+    # plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
