@@ -12,7 +12,6 @@ warnings.filterwarnings("ignore", category=PossibleUserWarning)
 from tqdm import tqdm
 import faiss
 from sklearn.manifold import TSNE
-# from libs.Dataset import TripletTrashbinDataModule
 
 class TripletNetwork(pl.LightningModule):
     # lr uguale a quello del progetto vecchio

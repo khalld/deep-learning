@@ -10,7 +10,7 @@ from os.path import splitext, join
 from torchvision import transforms
 import pytorch_lightning as pl
 from typing import Optional
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import DataLoader
 from torch.nn import ModuleList
 
 class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#Dataset
