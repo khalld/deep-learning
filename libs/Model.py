@@ -16,7 +16,7 @@ from sklearn.manifold import TSNE
 
 class TripletNetwork(pl.LightningModule):
     # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, dm_val_epoch_end, lr=0.002, momentum=0.99, num_class=3, batch_size=32, criterion=nn.TripletMarginLoss(margin=2)):
+    def __init__(self, embedding_net, lr=0.002, momentum=0.99, num_class=3, batch_size=32, criterion=nn.TripletMarginLoss(margin=2)):
         super(TripletNetwork, self).__init__()
 
         # self.save_hyperparameters()
@@ -28,7 +28,6 @@ class TripletNetwork(pl.LightningModule):
         self.lr = lr
         self.momentum = momentum
         self.batch_size = batch_size
-        self.dm_val_epoch_end = dm_val_epoch_end
 
     def forward(self, x):
         return self.embedding_net(x)
