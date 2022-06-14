@@ -4,6 +4,8 @@
 *.DS_Store
 dataset/images/*
 
+# troppo pesanti per essere caricati su GitHub, eventualmente lascia l'ultimo dell'ultima iterazione
+models/*/*/*/*/*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
