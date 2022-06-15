@@ -1,5 +1,5 @@
 from libs.Dataset import TripletTrashbinDataModule
-from libs.Model import TripletNetwork, evaluating_performance
+from libs.Model import TripletNetwork, evaluating_performance_and_save_tsne_plot
 from torchvision.models import squeezenet1_1
 import torch
 from torch import nn
@@ -37,43 +37,59 @@ if __name__ == "__main__":
     N_WORKERS = 0  # os.cpu_count() , if != 0 return warning
     GPUS = 0
     LR = 7.585775750291837e-08
-    MAX_EPOCHS = 30
+    MAX_EPOCHS = 32
+    LOGS_FOLDER = "logs"
+    MAIN_MODELS_FOLDER = "models"
 
-    dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
-    dm.setup()
-
-    squeezeNet = squeezenet1_1(pretrained=True)
-    squeezeNet.classifier = nn.Identity()
+    # dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
+    # dm.setup()
 
     # ---- Training Triplet Network with Triplet Margin Loss --------
 
-    tripletNetwork_tml = TripletNetwork(squeezeNet, lr=LR, batch_size=DATA_BATCH_SIZE)
-    logger_tml = TensorBoardLogger("models/logs", name="tripletNetwork_TripletMarginLoss")
+    # NOTA: Stai verificando che save_hyperparameters senza ignore funzioni meglio di quello con ignore.
+    # ... credo di sì!
 
-    trainer1 = pl.Trainer(gpus=GPUS,
-                        max_epochs=MAX_EPOCHS,
-                        callbacks=[progress.TQDMProgressBar()],
-                        logger=logger_tml,
-                        accelerator="auto",
-                        )
+    # tripletNetwork_tml = TripletNetwork() # il LR e l'embedding net è di default per evitare il problema del loading del checkpoint
+    # tripletNetwork_tml = TripletNetwork.load_from_checkpoint('models/tripletNetwork_TripletMarginLoss.ckpt')
+    # logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tripletNetwork_TripletMarginLoss")
 
-    trainer1.fit(model=tripletNetwork_tml, datamodule=dm)
-    trainer1.save_checkpoint('models/tripletNetwork_TripletMarginLoss.ckpt')
-    torch.save(trainer1.model.state_dict(), 'models/tripletNetwork_TripletMarginLoss.pth')
+    # trainer1 = pl.Trainer(gpus=GPUS,
+    #                     max_epochs=MAX_EPOCHS,
+    #                     callbacks=[progress.TQDMProgressBar()],
+    #                     logger=logger_tml,
+    #                     accelerator="auto",
+    #                     )
+
+    # trainer1.fit(model=tripletNetwork_tml, datamodule=dm, ckpt_path='models/tripletNetwork_TripletMarginLoss.ckpt')
+    # trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tripletNetwork_TripletMarginLoss_v2.ckpt'))
+    # torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tripletNetwork_TripletMarginLoss_v2.pth'))
+    
+    # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='test_{}-epochs'.format(MAX_EPOCHS))
+
 
     # ---- Training Triplet Network with Triplet Margin with Dinstance Loss --------
 
-    tripletNetwork_tmwdl = TripletNetwork(squeezeNet, lr=LR, batch_size=DATA_BATCH_SIZE, criterion=nn.TripletMarginWithDistanceLoss(margin=2, distance_function= nn.PairwiseDistance()))
+    # TODO: verifica se è necessario implementare un'altra classe per evitare i problemi del load_checkpoint
 
-    logger_tmwdl = TensorBoardLogger("models/logs", name="tripletNetwork_TripletMarginWithDistanceLoss")
+    # tripletNetwork_tmwdl = TripletNetwork(squeezeNet, lr=LR, batch_size=DATA_BATCH_SIZE, criterion=nn.TripletMarginWithDistanceLoss(margin=2, distance_function= nn.PairwiseDistance()))
 
-    trainer2 = pl.Trainer(gpus=GPUS,
-                        max_epochs=MAX_EPOCHS,
-                        callbacks=[progress.TQDMProgressBar()],
-                        logger=logger_tmwdl,
-                        accelerator="auto",
-                        )
+    # logger_tmwdl = TensorBoardLogger("models/logs", name="tripletNetwork_TripletMarginWithDistanceLoss")
 
-    trainer2.fit(model=tripletNetwork_tmwdl, datamodule=dm)
-    trainer2.save_checkpoint('models/tripletNetwork_TripletMarginWithDistanceLoss.ckpt')
-    torch.save(trainer2.model.state_dict(), 'models/tripletNetwork_TripletMarginWithDistanceLoss.pth')
+    # trainer2 = pl.Trainer(gpus=GPUS,
+    #                     max_epochs=MAX_EPOCHS,
+    #                     callbacks=[progress.TQDMProgressBar()],
+    #                     logger=logger_tmwdl,
+    #                     accelerator="auto",
+    #                     )
+
+    # trainer2.fit(model=tripletNetwork_tmwdl, datamodule=dm)
+    # trainer2.save_checkpoint('models/tripletNetwork_TripletMarginWithDistanceLoss.ckpt')
+    # torch.save(trainer2.model.state_dict(), 'models/tripletNetwork_TripletMarginWithDistanceLoss.pth')
+
+
+    # -------- evaluating performance e test snza data augmentation per provare che funzioni correttamente senza
+
+    # dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS, data_augmentation=False)
+    # dm.setup()
+    # tripletNetwork_tml = TripletNetwork.load_from_checkpoint('models/logs-no-dataaug/triplet_squeezeNet_v1/version_2/checkpoints/epoch=30-step=6417.ckpt')
+    # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='test_{}-epochs-NO-DATAAUG'.format(MAX_EPOCHS))
