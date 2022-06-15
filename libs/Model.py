@@ -12,15 +12,26 @@ warnings.filterwarnings("ignore", category=PossibleUserWarning)
 from tqdm import tqdm
 import faiss
 from sklearn.manifold import TSNE
+from torchvision.models import squeezenet1_1
+from os.path import splitext, join
 
 class TripletNetwork(pl.LightningModule):
-    # lr uguale a quello del progetto vecchio
-    def __init__(self, embedding_net, lr=0.002, momentum=0.99, num_class=3, batch_size=32, criterion=nn.TripletMarginLoss(margin=2)):
+    """
+        Modello triplet che allena SqueezeNet a ....
+        
+        Gli argomenti sono fissi per evitare errori durante il load del checkpoint.
+    """
+    def __init__(self, lr=7.585775750291837e-08, momentum=0.99, num_class=3, batch_size=256, criterion=nn.TripletMarginLoss(margin=2)):
         super(TripletNetwork, self).__init__()
 
+        # TODO: Devi ancora provare se rimuovendo l'ignore ottieni risultati migliori
         # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
-        self.embedding_net = embedding_net
+
+        squeezeNet = squeezenet1_1(pretrained=True)
+        squeezeNet.classifier = nn.Identity()
+
+        self.embedding_net = squeezeNet
         self.criterion = criterion
 
         self.num_class = num_class
@@ -64,6 +75,9 @@ class TripletNetwork(pl.LightningModule):
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
 
 def extr_rgb_rep(loader):
+    """
+        function that allows to extract rgb representations from a dataloader
+    """
     representations, label = [], []
     for batch in tqdm(loader, total=len(loader)):
         representations.append(batch[0].view(batch[0].shape[0], -1).numpy())
@@ -72,6 +86,9 @@ def extr_rgb_rep(loader):
     return np.concatenate(representations), np.concatenate(label)
 
 def extract_representation(model, loader):
+    """
+        TODO:
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     model.to(device)
@@ -116,8 +133,10 @@ def plot_values_tsne(embedding_net, test_loader):
     plt.legend()
     plt.show()
 
-# TODO: la devi testare per vedere se si comporta correttamente
 def evaluating_performance(lighting_module, datamodule):
+    """
+        Calcola l'errore di classificazione del modello, crea il TSNE e lo visualizza (per notebook jupiter)
+    """
     # Uso il modello per estrarre le rappresentazione dal training e dal test_set
 
     train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
@@ -134,7 +153,10 @@ def evaluating_performance(lighting_module, datamodule):
     plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
 
 
-def evaluating_performance_2(lighting_module, datamodule):
+def evaluating_performance_and_save_tsne_plot(lighting_module, datamodule, plot_name=""):
+    """
+        Calcola l'errore di classificazione del modello, crea il TSNE e lo salva su file
+    """
     # Uso il modello per estrarre le rappresentazione dal training e dal test_set
 
     train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
@@ -145,7 +167,18 @@ def evaluating_performance_2(lighting_module, datamodule):
     pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
 
     class_error = evaluate_classification(pred_test_label_base, test_label)
+    print('Classification error {}'.format(class_error))
 
-    return class_error
+    test_rep, test_labels = extract_representation(lighting_module.embedding_net, datamodule.test_dataloader())
+    selected_rep = np.random.choice(len(test_rep), 10000)
+    selected_test_rep = test_rep[selected_rep]
+    selected_test_labels = test_labels[selected_rep]
+    
+    tsne = TSNE(2)
+    rep_tsne = tsne.fit_transform(selected_test_rep)
 
-    # plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
+    plt.figure(figsize=(8,6))
+    for c in np.unique(selected_test_labels):
+        plt.plot(rep_tsne[selected_test_labels==c, 0], rep_tsne[selected_test_labels==c, 1], 'o', label=c)
+    plt.legend()
+    plt.savefig(join('models/', plot_name))
