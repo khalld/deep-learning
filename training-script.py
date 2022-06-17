@@ -37,34 +37,34 @@ if __name__ == "__main__":
     N_WORKERS = 0  # os.cpu_count() , if != 0 return warning
     GPUS = 0
     LR = 7.585775750291837e-08
-    MAX_EPOCHS = 32
+    MAX_EPOCHS = 30
     LOGS_FOLDER = "logs"
     MAIN_MODELS_FOLDER = "models"
-
-    # dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
-    # dm.setup()
+    CKPT_LAST_PATH = "tn_TripletMarginLoss_v2-epoch16.ckpt"
+    dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
+    dm.setup()
 
     # ---- Training Triplet Network with Triplet Margin Loss --------
 
-    # NOTA: Stai verificando che save_hyperparameters senza ignore funzioni meglio di quello con ignore.
-    # ... credo di sì!
-
-    # tripletNetwork_tml = TripletNetwork() # il LR e l'embedding net è di default per evitare il problema del loading del checkpoint
-    # tripletNetwork_tml = TripletNetwork.load_from_checkpoint('models/tripletNetwork_TripletMarginLoss.ckpt')
-    # logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tripletNetwork_TripletMarginLoss")
-
-    # trainer1 = pl.Trainer(gpus=GPUS,
-    #                     max_epochs=MAX_EPOCHS,
-    #                     callbacks=[progress.TQDMProgressBar()],
-    #                     logger=logger_tml,
-    #                     accelerator="auto",
-    #                     )
-
-    # trainer1.fit(model=tripletNetwork_tml, datamodule=dm, ckpt_path='models/tripletNetwork_TripletMarginLoss.ckpt')
-    # trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tripletNetwork_TripletMarginLoss_v2.ckpt'))
-    # torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tripletNetwork_TripletMarginLoss_v2.pth'))
+    # tripletNetwork_tml = TripletNetwork()
+    tripletNetwork_tml = TripletNetwork.load_from_checkpoint(checkpoint_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH)) 
     
-    # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='test_{}-epochs'.format(MAX_EPOCHS))
+    # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(0))
+
+    logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tn_TripletMarginLoss_v2")
+
+    trainer1 = pl.Trainer(gpus=GPUS,
+                        max_epochs=MAX_EPOCHS,
+                        callbacks=[progress.TQDMProgressBar()],
+                        logger=logger_tml,
+                        accelerator="auto",
+                        )
+
+    trainer1.fit(model=tripletNetwork_tml, datamodule=dm, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
+    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tn_TripletMarginLoss_v2-epoch{}.ckpt'.format(MAX_EPOCHS)))
+    torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tn_TripletMarginLoss_v2-epoch-{}.pth'.format(MAX_EPOCHS)))
+    
+    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(MAX_EPOCHS))
 
 
     # ---- Training Triplet Network with Triplet Margin with Dinstance Loss --------
