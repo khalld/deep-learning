@@ -68,13 +68,13 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
             self.train_transform = transforms.Compose([
                 transforms.Resize(self.img_size + 6),
                 transforms.RandomCrop(self.img_size),
-                transforms.RandomApply(ModuleList([
-                    transforms.ColorJitter(brightness=.3, hue=.2),
-                ]), p=0.3),
-                transforms.RandomGrayscale(p=0.2),
-                transforms.RandomHorizontalFlip(p=0.3),
+                # transforms.RandomApply(ModuleList([
+                #     transforms.ColorJitter(brightness=.3, hue=.2),
+                # ]), p=0.3),
+                # transforms.RandomGrayscale(p=0.2),
+                # transforms.RandomHorizontalFlip(p=0.3),
                 transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
-                transforms.RandomEqualize(p=0.2),
+                # transforms.RandomEqualize(p=0.2),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ])
@@ -82,10 +82,10 @@ class TripletTrashbinDataModule(pl.LightningDataModule):
             self.test_transform = transforms.Compose([
                 transforms.Resize(self.img_size + 32), 
                 transforms.CenterCrop(self.img_size),
-                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-                transforms.RandomInvert(p=0.3),
-                transforms.RandomHorizontalFlip(p=0.2),
-                transforms.RandomGrayscale(p=0.2),
+                # transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+                # transforms.RandomInvert(p=0.3),
+                # transforms.RandomHorizontalFlip(p=0.2),
+                # transforms.RandomGrayscale(p=0.2),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ])
@@ -197,10 +197,16 @@ def create_triplet_csv(all_labels_path=join("dataset", "all_labels.csv"), dest_c
     triplet_df.to_csv(dest_csv_path)
 
 def split_train_val_test(dataset, perc):
+    """
+        Split dataset into training and test set using sklearn.model_selection.train_test_split function
+    """
     train, testval = train_test_split(dataset, test_size = perc[1]+perc[2])
     val, test = train_test_split(testval, test_size = perc[2]/(perc[1]+perc[2]))
     return train, val, test
 
 def remove_unnamed_col(df):
+    """
+        Utility function that returns the input DataFrame witouth the column 'Unnamed: 0'
+    """
     res = df.drop(df.columns[df.columns.str.contains('unnamed',case = False)],axis = 1)
     return res

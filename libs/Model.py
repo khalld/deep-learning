@@ -11,15 +11,15 @@ from pytorch_lightning.utilities.warnings import PossibleUserWarning
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 from tqdm import tqdm
 import faiss
+from sklearn.metrics import accuracy_score
 from sklearn.manifold import TSNE
 from torchvision.models import squeezenet1_1
 from os.path import splitext, join
 
 class TripletNetwork(pl.LightningModule):
     """
-        Modello triplet che allena SqueezeNet a ....
-        
-        Gli argomenti sono fissi per evitare errori durante il load del checkpoint.
+        Triplet Neural Network that use SqueezeNet 1_1 as feature extractor.
+        Arguments are fixed to avoid errors during checkpoint loading.
     """
     def __init__(self, lr=7.585775750291837e-08, momentum=0.99, num_class=3, batch_size=256, criterion=nn.TripletMarginLoss(margin=2)):
         super(TripletNetwork, self).__init__()
@@ -53,7 +53,6 @@ class TripletNetwork(pl.LightningModule):
         positive = self.embedding_net(I_j)
         negative = self.embedding_net(I_k)
 
-        # calcolo la loss
         l = self.criterion(anchor, positive, negative)
 
         # logs metrics for each training_step, and the average across the epoch, to the progress bar and logger
@@ -76,7 +75,7 @@ class TripletNetwork(pl.LightningModule):
 
 def extr_rgb_rep(loader):
     """
-        function that allows to extract rgb representations from a dataloader
+        Extract representations from data loader
     """
     representations, label = [], []
     for batch in tqdm(loader, total=len(loader)):
@@ -87,7 +86,7 @@ def extr_rgb_rep(loader):
 
 def extract_representation(model, loader):
     """
-        TODO:
+        Extra representation from data loader with a model
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
@@ -102,7 +101,9 @@ def extract_representation(model, loader):
     return np.concatenate(representations), np.concatenate(labels)
 
 def predict_nn(train_rep, test_rep, train_label):
-    """Funzione che permette di predire le etichette sul test set utilizzando NN"""
+    """
+        Predict the predicted labels on the test set using NN
+    """
     index = faiss.IndexFlatL2(train_rep.shape[1])
 
     index.add(train_rep.astype(np.float32))
@@ -112,13 +113,26 @@ def predict_nn(train_rep, test_rep, train_label):
     return train_label[indices].squeeze()
 
 def evaluate_classification(pred_label, gt_label):
-    """Misuro la bontà delle predizioni ottenute calcolando la distanza euclidea tra i valori dei label predetti e quelli di groundt truth"""
-    # classification_error = np.sqrt((pred_label - gt_label)**2).sum(1).mean()
-    classification_error = np.sqrt(np.sum(np.square(pred_label-gt_label)))
+    """
+        Measure the accuracy of the prediction obtained from the predicted value and ground truth using accuracy_score
+    """
+
+    # The best performance is 1 with normalize == True and the number of samples with normalize == False.
+    classification_error = accuracy_score(y_true=gt_label, y_pred=pred_label, normalize=True)
 
     return classification_error
 
 def plot_values_tsne(embedding_net, test_loader):
+    """
+        Extract representation from test dataloader. Select randomly 10000 elements and using TSNE
+        from sklearn.manifold plot the result using matplotlib
+
+        t-SNE is a tool to visualize high-dimensional data.
+        It converts similarities between data points to joint probabilities and
+        tries to minimize the Kullback-Leibler divergence between the joint probabilities
+        of the low-dimensional embedding and the high-dimensional data.
+        more here https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
+    """
     test_rep, test_labels = extract_representation(embedding_net, test_loader)
     selected_rep = np.random.choice(len(test_rep), 10000)
     selected_test_rep = test_rep[selected_rep]
@@ -135,7 +149,8 @@ def plot_values_tsne(embedding_net, test_loader):
 
 def evaluating_performance(lighting_module, datamodule):
     """
-        Calcola l'errore di classificazione del modello, crea il TSNE e lo visualizza (per notebook jupiter)
+        Calculates the classification error of the model and displays
+        the graph of the tsne obtained
     """
     # Uso il modello per estrarre le rappresentazione dal training e dal test_set
 
@@ -155,7 +170,8 @@ def evaluating_performance(lighting_module, datamodule):
 
 def evaluating_performance_and_save_tsne_plot(lighting_module, datamodule, plot_name=""):
     """
-        Calcola l'errore di classificazione del modello, crea il TSNE e lo salva su file
+        Calculates the classification error of the model and save on specific path
+        the graph of the tsne obtained
     """
     # Uso il modello per estrarre le rappresentazione dal training e dal test_set
 
