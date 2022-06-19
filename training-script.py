@@ -1,5 +1,5 @@
 from libs.Dataset import TripletTrashbinDataModule
-from libs.Model import TripletNetwork, evaluating_performance_and_save_tsne_plot
+from libs.Model import TripletNetwork, TripletNetworkV2, evaluating_performance_and_save_tsne_plot
 from torchvision.models import squeezenet1_1
 import torch
 from torch import nn
@@ -37,21 +37,43 @@ if __name__ == "__main__":
     N_WORKERS = 0  # os.cpu_count() , if != 0 return warning
     GPUS = 0
     LR = 7.585775750291837e-08
-    MAX_EPOCHS = 30
+    MAX_EPOCHS = 16
     LOGS_FOLDER = "logs"
     MAIN_MODELS_FOLDER = "models"
-    CKPT_LAST_PATH = "tn_TripletMarginLoss_v2-epoch16.ckpt"
+    CKPT_LAST_PATH = "tn_TripletMarginLoss_v2-epoch15.ckpt"
     dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
     dm.setup()
 
     # ---- Training Triplet Network with Triplet Margin Loss --------
 
-    # tripletNetwork_tml = TripletNetwork()
-    tripletNetwork_tml = TripletNetwork.load_from_checkpoint(checkpoint_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH)) 
+    # # tripletNetwork_tml = TripletNetwork()
+    # tripletNetwork_tml = TripletNetwork.load_from_checkpoint(checkpoint_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH)) 
+
+    # # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(0))
+
+    # logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tn_TripletMarginLoss_v2")
+
+    # trainer1 = pl.Trainer(gpus=GPUS,
+    #                     max_epochs=MAX_EPOCHS,
+    #                     callbacks=[progress.TQDMProgressBar()],
+    #                     logger=logger_tml,
+    #                     accelerator="auto",
+    #                     )
+
+    # trainer1.fit(model=tripletNetwork_tml, datamodule=dm, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
+    # trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tn_TripletMarginLoss_v2-epoch{}.ckpt'.format(MAX_EPOCHS - 1)))
+    # torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tn_TripletMarginLoss_v2-epoch-{}.pth'.format(MAX_EPOCHS - 1)))
     
+    # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(MAX_EPOCHS - 1))
+
+
+    # ---- Training Triplet Network with Triplet Margin with Distance Loss --------
+
+    tripletNetwork_tmwdl = TripletNetworkV2()
+
     # evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(0))
 
-    logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tn_TripletMarginLoss_v2")
+    logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="tn_TripletMarginWithDistanceLoss_v2")
 
     trainer1 = pl.Trainer(gpus=GPUS,
                         max_epochs=MAX_EPOCHS,
@@ -60,31 +82,12 @@ if __name__ == "__main__":
                         accelerator="auto",
                         )
 
-    trainer1.fit(model=tripletNetwork_tml, datamodule=dm, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
-    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tn_TripletMarginLoss_v2-epoch{}.ckpt'.format(MAX_EPOCHS)))
-    torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tn_TripletMarginLoss_v2-epoch-{}.pth'.format(MAX_EPOCHS)))
+    trainer1.fit(model=tripletNetwork_tmwdl, datamodule=dm)#, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
+    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'tn_TripletMarginWithDistanceLoss_v2-epoch{}.ckpt'.format(MAX_EPOCHS - 1)))
+    torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'tn_TripletMarginWithDistanceLoss_v2-epoch-{}.pth'.format(MAX_EPOCHS - 1)))
     
-    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='tn_TripletMarginLoss_v2-epoch-{}-TSNE'.format(MAX_EPOCHS))
+    evaluating_performance_and_save_tsne_plot(tripletNetwork_tmwdl, datamodule=dm, plot_name='tn_TripletMarginWithDistanceLoss_v2-epoch-{}-TSNE'.format(MAX_EPOCHS - 1))
 
-
-    # ---- Training Triplet Network with Triplet Margin with Dinstance Loss --------
-
-    # TODO: verifica se è necessario implementare un'altra classe per evitare i problemi del load_checkpoint
-
-    # tripletNetwork_tmwdl = TripletNetwork(squeezeNet, lr=LR, batch_size=DATA_BATCH_SIZE, criterion=nn.TripletMarginWithDistanceLoss(margin=2, distance_function= nn.PairwiseDistance()))
-
-    # logger_tmwdl = TensorBoardLogger("models/logs", name="tripletNetwork_TripletMarginWithDistanceLoss")
-
-    # trainer2 = pl.Trainer(gpus=GPUS,
-    #                     max_epochs=MAX_EPOCHS,
-    #                     callbacks=[progress.TQDMProgressBar()],
-    #                     logger=logger_tmwdl,
-    #                     accelerator="auto",
-    #                     )
-
-    # trainer2.fit(model=tripletNetwork_tmwdl, datamodule=dm)
-    # trainer2.save_checkpoint('models/tripletNetwork_TripletMarginWithDistanceLoss.ckpt')
-    # torch.save(trainer2.model.state_dict(), 'models/tripletNetwork_TripletMarginWithDistanceLoss.pth')
 
 
     # -------- evaluating performance e test snza data augmentation per provare che funzioni correttamente senza

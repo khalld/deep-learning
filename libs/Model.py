@@ -73,6 +73,63 @@ class TripletNetwork(pl.LightningModule):
         if batch_idx == 0:
             self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
 
+class TripletNetworkV2(pl.LightningModule):
+    """
+        Triplet Neural Network that use SqueezeNet 1_1 as feature extractor.
+        Arguments are fixed to avoid errors during checkpoint loading.
+    """
+    def __init__(self, lr=7.585775750291837e-08, momentum=0.99, num_class=3, batch_size=256, criterion=nn.TripletMarginWithDistanceLoss(margin=2)):
+        super(TripletNetworkV2, self).__init__()
+
+        # TODO: Devi ancora provare se rimuovendo l'ignore ottieni risultati migliori
+        # self.save_hyperparameters()
+        self.save_hyperparameters(ignore=['embedding_net'])
+
+        squeezeNet = squeezenet1_1(pretrained=True)
+        squeezeNet.classifier = nn.Identity()
+
+        self.embedding_net = squeezeNet
+        self.criterion = criterion
+
+        self.num_class = num_class
+        self.lr = lr
+        self.momentum = momentum
+        self.batch_size = batch_size
+
+    def forward(self, x):
+        return self.embedding_net(x)
+
+    def configure_optimizers(self):
+        return SGD(self.embedding_net.parameters(), self.hparams.lr, momentum=self.hparams.momentum)
+
+    # Lightning automatically sets the model to training for training_step and to eval for validation.
+    def training_step(self, batch, batch_idx):
+        I_i, _, I_j, _, I_k, _ = batch
+
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
+
+        l = self.criterion(anchor, positive, negative)
+
+        # logs metrics for each training_step, and the average across the epoch, to the progress bar and logger
+        self.log('train/loss', l) #, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        
+        return l
+
+    def validation_step(self, batch, batch_idx):
+        I_i, _, I_j, _, I_k, _ = batch
+        anchor = self.embedding_net(I_i)
+        positive = self.embedding_net(I_j)
+        negative = self.embedding_net(I_k)
+        
+        l = self.criterion(anchor, positive, negative)
+        
+        self.log('valid/loss', l)
+        
+        if batch_idx == 0:
+            self.logger.experiment.add_embedding(anchor, batch[3], I_i, global_step=self.global_step)
+
 def extr_rgb_rep(loader):
     """
         Extract representations from data loader
