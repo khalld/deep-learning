@@ -213,8 +213,6 @@ dove:
 
 \end{enumerate}
 
-
-
 \section{Training}
 
 Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata,
@@ -266,41 +264,69 @@ che richiede che i parametri siano già assegnati default per continuare il load
 \end{center}
 
 \begin{center}
-    esempio di immagine con triplet margin loss come sopra
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-0.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-15.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-30.png}
+    \end{minipage}
+    \captionof{figure}{Embedding di elementi randomici sul dataset utilizzando il modello con \textbf{Triplet Margin Loss}, rispettivamente dopo: 0, 15, 30 epoche di training}    
 \end{center}
 
 \begin{center}
-    esempio di immagine con triplet margin with distance loss come esempi di sopra
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TMWDL-TSNE-0.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TMWDL-TSNE-15.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TMWDL-TSNE-30.png}
+    \end{minipage}
+    \captionof{figure}{Embedding di elementi randomici sul dataset utilizzando il modello con \textbf{Triplet Margin with Distance Loss}, rispettivamente dopo: 0, 15, 30 epoche di training}    
 \end{center}
 
-
-Dati i risultati $\ldots$ è stato trovato opportuno continuare .......
-
-\begin{center}
-    altro esempio di immagini usate ???
-\end{center}
-
-
+Da tensorboard
 
 Grafici di convergenza:
 
 \begin{center}
-    \begin{minipage}{0.48\linewidth}
-    \includegraphics[width=\linewidth]{tensorboard_1.png}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{train_loss.png}
     \end{minipage}
-    % \captionof{figure}{Rappresentazioni estratte prima del training e dopo 30 epoche}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{valid_loss.png}
+    \end{minipage}
+    \captionof{figure}{Grafico di convergenza di training (sx) e validation (dx) del modello utilizzando Triplet Margin Loss (arancione) e Triplet Margin with Distance Loss (blu)}
 \end{center}
 
-Projector
+\section{Conclusione}
+
+Nonostante nell'immediato la triplet margin with distance loss ottenga, a pari di epoca, un punteggio migliore rispetto (di pochissimo)
+alla triplet margin loss,
+si decide comunque di procedere continunando il training con la triplet margin loss in quanto, visualizzando il grafico,il valore della loss
+è diminuito molto di più rispetto all'altra.
+Per aumentare la generalizzazione, inoltre, ogni 15 epoche il dataloader verrà cambiato. 
+
+\begin{center}
+    visualizzazione dei grafici dei tnse completi
+\end{center}
+
+\begin{center}
+    grafo di convergenza finale
+\end{center}
 
 \begin{center}
     \begin{minipage}{0.48\linewidth}
     \includegraphics[width=\linewidth]{tensorboard_2.png}
     \end{minipage}
-    % \captionof{figure}{Rappresentazioni estratte prima del training e dopo 30 epoche}
+    \captionof{figure}{Visualizzazione embedding 3D}
 \end{center}
 
-
+Errore di validazione / classificazione finale
 
 
 \pagebreak
