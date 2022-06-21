@@ -51,17 +51,20 @@ class TripletTrashbinDataset(data.Dataset): # data.Dataset https://pytorch.org/d
         return im_anchor, im_label_anchor, im_pos, im_label_pos, im_neg, im_label_neg
 
 class TripletTrashbinDataModule(pl.LightningDataModule):
-    def __init__(self, img_size, batch_size=32, num_workers=0, data_augmentation=True):
+    def __init__(self, img_size, batch_size=32, num_workers=0, data_augmentation=True,
+                    trb_train_csv='triplet_training.csv', trb_val_csv='triplet_validation.csv', trb_test_csv='triplet_test.csv'):
         super().__init__()
 
         self.batch_size = batch_size
         self.num_classes = 3
         self.img_size = img_size
         self.num_workers = num_workers
+    
+        self.dst_main_path = 'dataset'
 
-        self.trb_train_csv = 'dataset/triplet_training.csv'
-        self.trb_val_csv = 'dataset/triplet_validation.csv'
-        self.trb_test_csv = 'dataset/triplet_test.csv'
+        self.trb_train_csv = join(self.dst_main_path, trb_train_csv)
+        self.trb_val_csv = join(self.dst_main_path, trb_val_csv)
+        self.trb_test_csv = join(self.dst_main_path, trb_test_csv)
         self.data_augmentation = data_augmentation
 
         if data_augmentation:

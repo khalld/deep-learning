@@ -24,8 +24,6 @@ class TripletNetwork(pl.LightningModule):
     def __init__(self, lr=7.585775750291837e-08, momentum=0.99, num_class=3, batch_size=256, criterion=nn.TripletMarginLoss(margin=2)):
         super(TripletNetwork, self).__init__()
 
-        # TODO: Devi ancora provare se rimuovendo l'ignore ottieni risultati migliori
-        # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
 
         squeezeNet = squeezenet1_1(pretrained=True)
@@ -81,8 +79,6 @@ class TripletNetworkV2(pl.LightningModule):
     def __init__(self, lr=7.585775750291837e-08, momentum=0.99, num_class=3, batch_size=256, criterion=nn.TripletMarginWithDistanceLoss(margin=2)):
         super(TripletNetworkV2, self).__init__()
 
-        # TODO: Devi ancora provare se rimuovendo l'ignore ottieni risultati migliori
-        # self.save_hyperparameters()
         self.save_hyperparameters(ignore=['embedding_net'])
 
         squeezeNet = squeezenet1_1(pretrained=True)
@@ -224,6 +220,23 @@ def evaluating_performance(lighting_module, datamodule):
 
     plot_values_tsne(lighting_module.embedding_net, datamodule.test_dataloader())
 
+def evaluating_performance_only(lighting_module, datamodule):
+    """
+        Calculates the classification error of the model and displays
+        the graph of the tsne obtained
+    """
+    # Uso il modello per estrarre le rappresentazione dal training e dal test_set
+
+    train_rep_base, train_label = extract_representation(lighting_module, datamodule.train_dataloader())
+    test_rep_base, test_label = extract_representation(lighting_module, datamodule.test_dataloader())
+
+    # Valuto le performance del sistema con queste rappresentazioni non ancora ottimizzate
+
+    pred_test_label_base = predict_nn(train_rep=train_rep_base, test_rep=test_rep_base, train_label=train_label)
+
+    class_error = evaluate_classification(pred_test_label_base, test_label)
+
+    print('Classification error {}'.format(class_error))
 
 def evaluating_performance_and_save_tsne_plot(lighting_module, datamodule, plot_name=""):
     """
