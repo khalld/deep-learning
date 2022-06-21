@@ -56,6 +56,7 @@ Il codice è ampiamente commentato, in particolare può essere diviso concettual
 
 La repository del progetto è disponibile al \href{https://github.com/khalld/triplet-trashbin-classifier}{seguente} indirizzo.
 
+\pagebreak
 
 \section{Architettura}
 
@@ -155,13 +156,12 @@ Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è doc
 \end{center}
 
 È stato trovato più efficiente, principalmente per effettuare i vari test, salvare il dataset generato in
-\texttt{.csv}, evitando memorizzare le triplette in memoria. 
-
-Si nota che per incrementare la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
+\texttt{.csv}, evitando memorizzare le triplette in memoria. Si nota che per incrementare la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
 \texttt{.csv}, del dataset adattato, ed alternare le varie versioni del dataset dopo un certo numero di epoche, 
 in quanto, la funzione è stata implementata in modo tale che le triplette generate siano diverse ad ogni esecuzione del codice. Nel nostro caso, viene utilizzata
 una versione per le prime 30 epoche e successivamente viene cambiato ogni 15.
 
+\pagebreak
 \section{Scelta della loss}
 
 Per il training della rete siamese sono state prese in esame due loss differenti (disponibili su \texttt{torch.nn})
@@ -181,9 +181,7 @@ Una tripletta è composta da $a$ (ancora), $p$ (positivo) ed $n$ (negativo).
 \subsection{Triplet margin with distance loss}
 Dati in input i tensori $a$ (ancora), $p$ (positivo) ed $n$ (negativo) ed una funzione a valori
 reali non negativa chiamata \textit{funzione di distanza} $d$ usata per calcolare la relazione tra
-l'ancora e l'esempio positivo (distanza positiva) e l'ancora e l'esempio negativo (distanza negativa)
-
-La loss non ridotta può essere descritta dalla seguente formula:
+l'ancora e l'esempio positivo (distanza positiva) e l'ancora e l'esempio negativo (distanza negativa). La loss non ridotta può essere descritta dalla seguente formula:
 
 \begin{center}
     $l(a,p,n) = L = { \{ l_1, \ldots, l_N \}}^T, l_i = \max{\{ d(a_i, p_i) - d(a_i, n_i) + margin, 0 \}} $
@@ -213,6 +211,8 @@ dove:
 
 \end{enumerate}
 
+
+\pagebreak
 \section{Training}
 
 Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata,
@@ -248,6 +248,8 @@ Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
 \end{center}
 
 Dopo numerose prove, è stato opportuno applicare \texttt{RandomCrop()} e \texttt{RandomPerspective} al dataset di training e \texttt{CenterCrop} al dataset di test
+
+\pagebreak
 
 L'errore di classificazione ottenuti delle loss due loss (sono state implementate due classi per via di un bug di \texttt{pytorch-lighting},
 che richiede che i parametri siano già assegnati default per continuare il loading) sono riassunti nella seguente tabella
@@ -289,10 +291,6 @@ che richiede che i parametri siano già assegnati default per continuare il load
     \captionof{figure}{Embedding di elementi randomici sul dataset utilizzando il modello con \textbf{Triplet Margin with Distance Loss}, rispettivamente dopo: 0, 15, 30 epoche di training}    
 \end{center}
 
-Da tensorboard
-
-Grafici di convergenza:
-
 \begin{center}
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{train_loss.png}
@@ -300,9 +298,11 @@ Grafici di convergenza:
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{valid_loss.png}
     \end{minipage}
-    \captionof{figure}{Grafico di convergenza di training (sx) e validation (dx) del modello utilizzando Triplet Margin Loss (arancione) e Triplet Margin with Distance Loss (blu)}
+    \captionof{figure}{Grafici di convergenza di training (sx) e validation (dx) del modello utilizzando Triplet Margin Loss (arancione) e Triplet Margin with Distance Loss (blu)}
 \end{center}
 
+
+\pagebreak
 \section{Conclusione}
 
 Nonostante nell'immediato la triplet margin with distance loss ottenga, a pari di epoca, un punteggio migliore rispetto (di pochissimo)
