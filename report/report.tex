@@ -38,33 +38,34 @@ Trashbin Triplet Classifier \\
 
 \section{Introduzione}
 
-L'obbiettivo del progetto è trovare una procedura di \textit{Metric Learning} per classificare la 
+L'obbiettivo dell'elaborato è implementare una procedura di \textit{Metric Learning} per classificare la 
 capienza rimanente di secchi della spazzatura in: pieno, vuoto, a metà.
 
-Il dataset è stato preso da un precedente progetto (\href{https://github.com/khalld/trashbin-classifier}{repository Github}). Il dataset è disponibile \href{https://drive.google.com/drive/folders/11SGtZrM8BWJDPOcnKR7RjLJs0dJOfSCA?usp=sharing}{al seguente indirizzo}.
+Il dataset è stato preso da un precedente progetto (\href{https://github.com/khalld/trashbin-classifier}{repository Github}) ed è disponibile \href{https://drive.google.com/drive/folders/11SGtZrM8BWJDPOcnKR7RjLJs0dJOfSCA?usp=sharing}{al seguente indirizzo}.
 
-Il progetto è stato sviluppato utilizzando \texttt{python v3.9.9} e \texttt{pytorch-lighting v1.6.3}. Il modello è stato allenato utilizzando un MacBook Pro (16-inch, 2019) con processore Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz, RAM: 16 GB 2667 MHz DDR4 e GPU AMD Radeon Pro 5300M 4 GB
+Il progetto è stato implementato utilizzando \texttt{python v3.9.9} e \texttt{pytorch-lighting v1.6.3}. Il modello è stato allenato utilizzando un MacBook Pro (16-inch, 2019) con processore Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz, RAM: 16 GB 2667 MHz DDR4 e GPU AMD Radeon Pro 5300M 4 GB
 Intel UHD Graphics 630 1536 MB. Sfortunatamente, ad oggi, il modello di GPU non è supportato per l'accelerazione del training e di conseguenza è stato effettuato su CPU.
+
+Il codice è ampiamente commentato, in particolare può essere diviso concettualmente in 3 parti:
+
+\begin{enumerate}
+    \item \texttt{dataset.ipynb} Notebook realizzato per mostrare il funzionamento delle funzioni implementate per adattare il dataset al task specifico
+    \item \texttt{training-script.py} Script utilizzato per effettuare il training del modello
+    \item \texttt{main.ipynb} Notebook esplicativo, realizzato per visualizzare le performance ed effettuarne la valutazione (partendo da un \texttt{.ckpt})
+\end{enumerate}
 
 La repository del progetto è disponibile al \href{https://github.com/khalld/triplet-trashbin-classifier}{seguente} indirizzo.
 
-Il codice è ampiamente commentato in particolare è stato diviso in tre parti:
-
-\begin{itemize}
-    \item \texttt{dataset.ipynb} Notebook realizzato per mostrare il funzionamento delle funzioni implementate per adattare il dataset al task specifico
-    \item \texttt{training-script.py} Script python utilizzato per effettuare il training del modello
-    \item \texttt{main.ipynb} Notebook esplicativo, realizzato per visualizzare le performance del modello in modo agevole
-\end{itemize}
 
 \section{Architettura}
 
-È stato trovato opportuno l'utilizzo di una \textit{Rete Triplet} per il raggiungimento
-dell'obbiettivo assegnato dato che l'obbiettivo sarebbe massimizzare la distanza inter classe degli oggetti
-e la rete triplet dovrebbe permetterci di ottenere un criterio di training più forte rispetto a quello
+Per il raggiungimento
+dell'obbiettivo assegnato, è stato trovato opportuno l'utilizzo di una \textit{Rete Triplet} dato che l'obbiettivo sarebbe massimizzare la distanza inter classe degli oggetti
+e quest'ultima dovrebbe permettere di ottenere un criterio di training più forte rispetto a quello
 delle reti siamesi.
 
 Una rete di tipo Triplet ha un criterio di training più forte rispetto a quelle siamesi in quanto, offrendo sempre un esempio positivo e negativo relativo
-al medesimo elemento di ancora. Questo approccio, dovrebbe, inoltre, garantire di massimizzare la distanza
+al medesimo elemento di ancora. Questo approccio dovrebbe, inoltre, garantire di massimizzare la distanza
 tra 'metà-vuoto' e 'metà-pieno', rispetto alla rete siamese.
 
 \begin{center}
@@ -93,11 +94,11 @@ Prende in input una tripletta di elementi $(I_i, I_j, I_k)$ che sono:
 \end{itemize}
 
 In breve, la distanza dall'ancora al positivo è minimizzata e la distanza dall'ancora al negativo è massimizzata.
-Il modello farà in modo tale che una coppia di campioni con le stesse etichette abbia una distanza inferiore rispetto
+Il modello farà in modo tale che una coppia di campioni con le stesse etichette abbia una distanza inferiore rispetto a una copppia di campioni con etichette diverse.
 
 \subsection{Scelta del modello}
 
-Per estrarre le feature si è deciso di utilizzare una \textbf{SqueezeNet} pre-allenata.
+Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-allenata, eliminando il layer di classificazione.
 
 \begin{center}
     \begin{minipage}{0.48\linewidth}
@@ -107,38 +108,33 @@ Per estrarre le feature si è deciso di utilizzare una \textbf{SqueezeNet} pre-a
 \end{center}
 
 Nel progetto precedente, sono stati presi in esame alcuni modelli pretrained, disponibili su
-\texttt{torchvision.models}, per effettuare il medesimo task di classificazione. Per tale motivo,
-è stato trovato opportuno utilizzare \texttt{SqueezeNet} come feature
-extractor, che aveva comunque ottenuto il miglior risultato in termini di tempo di esecuzione e validazione.
+\texttt{torchvision.models}, per effettuare il task di classificazione: per tale motivo,
+è stato più conveniente utilizzare \texttt{SqueezeNet}, che aveva comunque ottenuto il miglior risultato in termini di tempo di esecuzione e validazione.
 
-Inizialmente, data la maggiore potenza computazionale rispetto allo studio precedente,
+Inizialmente, nonostante la maggiore potenza computazionale rispetto allo studio precedente,
 sono state effettuate delle prove utilizzando \texttt{MobileNetV2}, ma che richiedeva
 comunque circa il doppio del tempo di \texttt{SqueezeNet}
 
-Ad esempio, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 1h e 10 minuti
-contro i 35/40 di \texttt{SqueezeNet v1}. Approssimando, utilizzando immagini a colori 224x224
-ed effettuando un training di 60 epoche \texttt{SqueezeNet v1} impiegherebbe 30 ore contro le 70 di \texttt{MobileNetV2}.
+Ad esempio, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 70 minuti
+contro i 35/40 di \texttt{SqueezeNet v1} per immagini a colori \texttt{224x224}. Approssimando ed effettuando un training di 60 epoche \texttt{SqueezeNet v1} impiegherebbe 30 ore contro le 70 di \texttt{MobileNetV2}.
 
 \subsection{Ottimizzazione del modello}
 
-Sono state sfruttate funzioni, presenti su \texttt{pytorch-lighting}, trovare automaticamente 
-i parametri da usare per il training del modello.
+Sono state utilizzate funzioni, presenti su \texttt{pytorch-lighting} per trovare automaticamente i parametri da usare per il training del modello.
 Nel dettaglio:
 
 \begin{itemize}
     \item {\textbf{Batch Size Finder} 
         Utilizzato per evitare problemi in memoria durante il training. Viene utilizzato
-        per trovare la dimensione batch più grande che si adatta alla memoria. I lotti di grandi
+        per trovare la dimensione batch più grande che si adatta alla memoria, in questo caso il pc supportava batch di dimensioni fino a \textbf{6600} I lotti di grandi
         dimensioni spesso producono una migliore stima dei gradienti,
-        ma possono anche comportare tempi di addestramento più lunghi. Per evitare tempi
-        di attesa troppo lunghi, dopo diverse prove, è stato trovato opportuno fissarla a \textbf{256}.
+        ma possono anche comportare tempi di addestramento più lunghi. Dopo diverse prove, è stato trovato opportuno fissarla a \textbf{256}; 
     }
     \item \textbf{Learning Rate Finder} {
 
-        Selezionare un buon tasso di apprendimento è essenziale sia per
-        prestazioni migliori che per una convergenza più rapida. Può essere utilizzato per ridurre
-        la quantità di problemi relativi alla scelta di un buon learning rate iniziale. Da documentazione,
-        un rilevatore del lr esegue una piccola run dove il learning rate viene aumentato dopo ogni batch elaborato
+        Selezionare un learning rate è essenziale sia per
+        prestazioni migliori che per una convergenza più rapida. Da documentazione,
+        il \textit{learning rate finder} esegue una piccola run dove il learning rate viene aumentato dopo ogni batch elaborato
         e viene registrata la loss corrispondente.
     }
 
@@ -146,8 +142,8 @@ Nel dettaglio:
 
 \section{Dataset}
 
-Si è presentata la necessità di riadattare il dataset in triplette: ad ogni elemento di ancora verrà
-associato un elemento positivo ed uno negativo, che sarà scelto randomicamente in base alle due classi rimanenti
+Si è presentata la necessità di riadattare il dataset in triplette: ad ogni elemento di \textbf{ancora} verrà
+associato un elemento \textbf{positivo} ed uno \textbf{negativo}, che sarà scelto randomicamente 
 (ad esempio, se l'ancora è della classe 'vuoto', l'elemento negativo sarà scelto randomicamente tra 'pieno' o 'mezzo')
 Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è documentato su \texttt{dataset.ipynb}. 
 
@@ -158,12 +154,13 @@ Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è doc
     \captionof{figure}{Dataset organizzato in triplette}
 \end{center}
 
-È stato trovato più efficiente, principalmente per effettuare le prove, 'fissare' il dataset ottenuto in
+È stato trovato più efficiente, principalmente per effettuare i vari test, salvare il dataset generato in
 \texttt{.csv}, evitando memorizzare le triplette in memoria. 
 
-Si nota che per aumentare la generalizzazione, sarebbe utile avere a disposizione diversi
+Si nota che per incrementare la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
 \texttt{.csv}, del dataset adattato, ed alternare le varie versioni del dataset dopo un certo numero di epoche, 
-in quanto, la funzione è stata implementata in modo tale che le triplette generate siano diverse ad ogni esecuzione del codice.
+in quanto, la funzione è stata implementata in modo tale che le triplette generate siano diverse ad ogni esecuzione del codice. Nel nostro caso, viene utilizzata
+una versione per le prime 30 epoche e successivamente viene cambiato ogni 15.
 
 \section{Scelta della loss}
 
@@ -223,6 +220,8 @@ dove:
 Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata,
 era quella del progetto precedentemente citato, senza fornire miglioramenti.
 
+Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
+
 \begin{center}
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{04.png}
@@ -259,9 +258,9 @@ che richiede che i parametri siano già assegnati default per continuare il load
     \begin{tabular}{ | l | l | l | p{5cm} |}
     \hline
     Epoch & Triplet Margin Loss & Triplet Margin With Distance Loss \\ \hline
-    0 & 0.677 & TODO: \\ \hline
-    15 & 0.936 & 19C \\ \hline
-    30 & 10C & 21C  \\
+    0 & 0.677 & 0.739 \\ \hline
+    15 & 0.936 & 0.792: \\ \hline
+    30 & 0.900 & 0.894  \\
     \hline
     \end{tabular}
 \end{center}
