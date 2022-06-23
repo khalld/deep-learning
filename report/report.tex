@@ -49,9 +49,9 @@ Intel UHD Graphics 630 1536 MB. Sfortunatamente, ad oggi, il modello di GPU non 
 Il codice è ampiamente commentato, in particolare può essere diviso concettualmente in 3 parti:
 
 \begin{enumerate}
-    \item \texttt{dataset.ipynb} Notebook realizzato per mostrare il funzionamento delle funzioni implementate per adattare il dataset al task specifico
+    \item \texttt{dataset.ipynb} Notebook Jupiter realizzato per mostrare il funzionamento delle funzioni implementate per adattare il dataset al task specifico
     \item \texttt{training-script.py} Script utilizzato per effettuare il training del modello
-    \item \texttt{main.ipynb} Notebook esplicativo, realizzato per visualizzare le performance ed effettuarne la valutazione (partendo da un \texttt{.ckpt})
+    \item \texttt{main.ipynb} Notebook Jupiter esplicativo, realizzato per visualizzare le performance ed effettuarne la valutazione (partendo da un \texttt{.ckpt})
 \end{enumerate}
 
 La repository del progetto è disponibile al \href{https://github.com/khalld/triplet-trashbin-classifier}{seguente} indirizzo.
@@ -60,13 +60,16 @@ La repository del progetto è disponibile al \href{https://github.com/khalld/tri
 
 \section{Architettura}
 
-Per il raggiungimento
-dell'obbiettivo assegnato, è stato trovato opportuno l'utilizzo di una \textit{Rete Triplet} dato che l'obbiettivo sarebbe massimizzare la distanza inter classe degli oggetti
+Per il raggiungimento dell'obiettivo assegnato, è stato trovato opportuno
+l'utilizzo di una \textit{Rete Triplet}, dato che l'obbiettivo sarebbe massimizzare la distanza inter-classe degli oggetti
 e quest'ultima dovrebbe permettere di ottenere un criterio di training più forte rispetto a quello
 delle reti siamesi.
 
-Una rete di tipo Triplet ha un criterio di training più forte rispetto a quelle siamesi in quanto, offrendo sempre un esempio positivo e negativo relativo
-al medesimo elemento di ancora. Questo approccio dovrebbe, inoltre, garantire di massimizzare la distanza
+Una rete di tipo Triplet ha un criterio di training più forte, in quanto, offre
+sempre un esempio positivo e negativo relativo
+al medesimo elemento di ancora. 
+
+Inoltre, questo approccio dovrebbe, garantire la massimizzazione della distanza
 tra 'metà-vuoto' e 'metà-pieno', rispetto alla rete siamese.
 
 \begin{center}
@@ -76,7 +79,7 @@ tra 'metà-vuoto' e 'metà-pieno', rispetto alla rete siamese.
     \captionof{figure}{Esempio del risultato che si vuole ottenere}
 \end{center}
 
-L'architetura di una rete Triplet è composta da tre rami identici che condividono gli stessi pesi e mappano gli elementi in codici $\Phi(I_i)$, $\Phi(I_j)$, $\Phi(I_k)$.
+L'architetura di una rete Triplet è composta da tre rami identici, che condividono gli stessi pesi e mappano gli elementi in codici $\Phi(I_i)$, $\Phi(I_j)$, $\Phi(I_k)$.
 
 \begin{center}
     \begin{minipage}{0.5\linewidth}
@@ -94,12 +97,13 @@ Prende in input una tripletta di elementi $(I_i, I_j, I_k)$ che sono:
     \item L'esempio negativo $I_k$, cioé un elemento diverso dalle classi di $I_i$, $I_j$
 \end{itemize}
 
-In breve, la distanza dall'ancora al positivo è minimizzata e la distanza dall'ancora al negativo è massimizzata.
-Il modello farà in modo tale che una coppia di campioni con le stesse etichette abbia una distanza inferiore rispetto a una copppia di campioni con etichette diverse.
+In breve, la distanza dall'ancora al positivo è minimizzata e
+la distanza dall'ancora al negativo è massimizzata.
+Il modello farà in modo che una coppia di campioni con le stesse etichette abbia una distanza inferiore rispetto a una copppia di campioni con etichette diverse.
 
 \subsection{Scelta del modello}
 
-Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-allenata, eliminando il layer di classificazione.
+Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-trained, eliminando il layer di classificazione.
 
 \begin{center}
     \begin{minipage}{0.48\linewidth}
@@ -110,13 +114,14 @@ Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-al
 
 Nel progetto precedente, sono stati presi in esame alcuni modelli pretrained, disponibili su
 \texttt{torchvision.models}, per effettuare il task di classificazione: per tale motivo,
-è stato più conveniente utilizzare \texttt{SqueezeNet}, che aveva comunque ottenuto il miglior risultato in termini di tempo di esecuzione e validazione.
+è stato più conveniente utilizzare \texttt{SqueezeNet}, che aveva comunque ottenuto il miglior risultato
+in termini di tempo, esecuzione e validazione.
 
 Inizialmente, nonostante la maggiore potenza computazionale rispetto allo studio precedente,
-sono state effettuate delle prove utilizzando \texttt{MobileNetV2}, ma che richiedeva
-comunque circa il doppio del tempo di \texttt{SqueezeNet}
+sono state effettuate delle prove utilizzando \texttt{MobileNetV2}, ma quest'ultima richiedeva
+circa il doppio del tempo di \texttt{SqueezeNet}
 
-Ad esempio, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 70 minuti
+In particolare, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 70 minuti
 contro i 35/40 di \texttt{SqueezeNet v1} per immagini a colori \texttt{224x224}. Approssimando ed effettuando un training di 60 epoche \texttt{SqueezeNet v1} impiegherebbe 30 ore contro le 70 di \texttt{MobileNetV2}.
 
 \subsection{Ottimizzazione del modello}
@@ -126,15 +131,16 @@ Nel dettaglio:
 
 \begin{itemize}
     \item {\textbf{Batch Size Finder} 
-        Utilizzato per evitare problemi in memoria durante il training. Viene utilizzato
-        per trovare la dimensione batch più grande che si adatta alla memoria, in questo caso il pc supportava batch di dimensioni fino a \textbf{6600} I lotti di grandi
+        impiegato per evitare problemi in memoria durante il training. Viene utilizzato
+        per trovare la dimensione batch più grande, che si adatta alla memoria. In questo caso il pc supportava batch di dimensioni fino a \textbf{6600} I lotti di grandi
         dimensioni spesso producono una migliore stima dei gradienti,
-        ma possono anche comportare tempi di addestramento più lunghi. Dopo diverse prove, è stato trovato opportuno fissarla a \textbf{256}; 
+        ma possono anche comportare tempi di addestramento più lunghi. Dopo diverse prove è stato
+        opportuno fissarla a \textbf{256}; 
     }
     \item \textbf{Learning Rate Finder} {
 
         Selezionare un learning rate è essenziale sia per
-        prestazioni migliori che per una convergenza più rapida. Da documentazione,
+        prestazioni migliori, che per una convergenza più rapida. Da documentazione,
         il \textit{learning rate finder} esegue una piccola run dove il learning rate viene aumentato dopo ogni batch elaborato
         e viene registrata la loss corrispondente.
     }
@@ -155,9 +161,10 @@ Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è doc
     \captionof{figure}{Dataset organizzato in triplette}
 \end{center}
 
-È stato trovato più efficiente, principalmente per effettuare i vari test, salvare il dataset generato in
-\texttt{.csv}, evitando memorizzare le triplette in memoria. Si nota che per incrementare la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
-\texttt{.csv}, del dataset adattato, ed alternare le varie versioni del dataset dopo un certo numero di epoche, 
+Effettuando vari test, è stato trovato più efficiente salvare il dataset generato in
+\texttt{.csv}, evitando memorizzare le triplette in memoria. Si nota che, per incrementare
+la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
+\texttt{.csv} del dataset adattato ed alternare le varie versioni del dataset dopo un certo numero di epoche, 
 in quanto, la funzione è stata implementata in modo tale che le triplette generate siano diverse ad ogni esecuzione del codice. Nel nostro caso, viene utilizzata
 una versione per le prime 30 epoche e successivamente viene cambiato ogni 15.
 
@@ -191,16 +198,16 @@ dove:
 
 \begin{enumerate}
     \item $N$ è la dimensione del batch;
-    \item {$d$ è una funzione non negativa a valori reali che quantifica la vicinanza di due tensori riferito
+    \item {$d$ è una funzione non negativa a valori reali, che quantifica la vicinanza di due tensori riferito
     alla funzione di distanza;}
     \item {$margin$ 
-        è un margine non negativo che rappresenta la differenza minima
+        è un margine non negativo, che rappresenta la differenza minima
         tra le distanze positive e negative che è richiesto dalla loss che sia 0;
     }
-    \item Il tensore di input ha $N$ elementi ognuno del quale può essere di qualsiasi forma che la funzione di distanza può gestire.
+    \item Il tensore di input ha $N$ elementi ognuno del quale può essere di qualsiasi forma, che la funzione di distanza può gestire.
 
     \item {
-        Di default la funzione di distanza utilizzata è la Paiwrise Distance Funtion
+        Di default la funzione di distanza utilizzata è la Paiwrise Distance Funtion,
         che calcola la distanza tra i vettori $v_1$ e $v_2$ usando la p-norm:
     }
     \subitem {
@@ -215,7 +222,7 @@ dove:
 \pagebreak
 \section{Training}
 
-Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata,
+Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata
 era quella del progetto precedentemente citato, senza fornire miglioramenti.
 
 Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
@@ -251,8 +258,7 @@ Dopo numerose prove, è stato opportuno applicare \texttt{RandomCrop()} e \textt
 
 \pagebreak
 
-L'errore di classificazione ottenuti delle loss due loss (sono state implementate due classi per via di un bug di \texttt{pytorch-lighting},
-che richiede che i parametri siano già assegnati default per continuare il loading) sono riassunti nella seguente tabella
+Gli errori classificazione ottenuti dalle loss due loss sono riassunti nella seguente tabella:
 
 \begin{center}
     \begin{tabular}{ | l | l | l | p{5cm} |}
@@ -305,14 +311,34 @@ che richiede che i parametri siano già assegnati default per continuare il load
 \pagebreak
 \section{Conclusione}
 
-Nonostante nell'immediato la triplet margin with distance loss ottenga, a pari di epoca, un punteggio migliore rispetto (di pochissimo)
+Nonostante nell'immediato la triplet margin with distance loss ottenga, a parità di epoca, un punteggio migliore rispetto (di pochissimo)
 alla triplet margin loss,
 si decide comunque di procedere continunando il training con la triplet margin loss in quanto, visualizzando il grafico,il valore della loss
 è diminuito molto di più rispetto all'altra.
-Per aumentare la generalizzazione, inoltre, ogni 15 epoche il dataloader verrà cambiato. 
+Per aumentare la generalizzazione, inoltre, ogni 15 epoche il dataset utilizzato per effettuare il training verrà cambiato. 
 
 \begin{center}
     visualizzazione dei grafici dei tnse completi
+\end{center}
+
+
+\begin{center}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-0.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-15.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-30.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-45.png}
+    \end{minipage}
+    \begin{minipage}{0.3\linewidth}
+    \includegraphics[width=\linewidth]{TML-TSNE-60.png}
+    \end{minipage}
+    \captionof{figure}{Embedding di elementi randomi utilizzando Triplet Margin loss rispettivamente dopo: 0, 15, 30, 40, 60 epoche di training}
 \end{center}
 
 \begin{center}

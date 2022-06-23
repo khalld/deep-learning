@@ -40,7 +40,7 @@ if __name__ == "__main__":
     MAX_EPOCHS = 31
     LOGS_FOLDER = "logs"
     MAIN_MODELS_FOLDER = "models"
-    CKPT_LAST_PATH = "TripletMarginLoss-epoch-30.ckpt"
+    CKPT_LAST_PATH = "TripletMarginLoss-epoch-60.ckpt"
     
     dm = TripletTrashbinDataModule(img_size=DATA_IMG_SIZE,num_workers=N_WORKERS)
     dm.setup()
@@ -56,12 +56,12 @@ if __name__ == "__main__":
 
     # tripletNetwork_tml = TripletNetwork()
 
-    # Ho già allenato la rete con il dataset di default per 30 epoche, quindi lo carico
+    # Ho già allenato la rete con il dataset di default per 30 epoche, quindi carico il da .ckpt
     tripletNetwork_tml = TripletNetwork.load_from_checkpoint(checkpoint_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH)) 
 
     logger_tml = TensorBoardLogger(join(MAIN_MODELS_FOLDER, LOGS_FOLDER), name="TripletMarginLoss")
 
-    MAX_EPOCHS = MAX_EPOCHS + 15
+    MAX_EPOCHS = MAX_EPOCHS + 15 # 46
 
     trainer1 = pl.Trainer(gpus=GPUS,
                         max_epochs=MAX_EPOCHS,
@@ -70,23 +70,25 @@ if __name__ == "__main__":
                         accelerator="auto",
                         )
 
+    # effettuo il fit ma con una versione del dataset diversa dalla precedente
     trainer1.fit(model=tripletNetwork_tml, datamodule=dm_v2, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
-    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'TripletMarginLoss-epoch{}.ckpt'.format(MAX_EPOCHS - 1)))
+    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'TripletMarginLoss-epoch-{}.ckpt'.format(MAX_EPOCHS - 1)))
     torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'TripletMarginLoss-epoch-{}.pth'.format(MAX_EPOCHS - 1)))
-    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='TripletMarginLoss-epoch-{}-TSNE'.format(MAX_EPOCHS - 1))
+    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm_v2, plot_name='TripletMarginLoss-epoch-{}-TSNE'.format(MAX_EPOCHS - 1))
 
-    MAX_EPOCHS = MAX_EPOCHS + 15
-    trainer1 = pl.Trainer(gpus=GPUS,
+    MAX_EPOCHS = MAX_EPOCHS + 15 # 61
+    trainer2 = pl.Trainer(gpus=GPUS,
                     max_epochs=MAX_EPOCHS,
                     callbacks=[progress.TQDMProgressBar()],
                     logger=logger_tml,
                     accelerator="auto",
                     )
-    
-    trainer1.fit(model=tripletNetwork_tml, datamodule=dm_v3, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
-    trainer1.save_checkpoint(join(MAIN_MODELS_FOLDER, 'TripletMarginLoss-epoch{}.ckpt'.format(MAX_EPOCHS - 1)))
-    torch.save(trainer1.model.state_dict(), join(MAIN_MODELS_FOLDER,'TripletMarginLoss-epoch-{}.pth'.format(MAX_EPOCHS - 1)))
-    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm, plot_name='TripletMarginLoss-epoch-{}-TSNE'.format(MAX_EPOCHS - 1))
+
+    # effettuo il fit ma con una versione del dataset diversa dalla precedente
+    trainer2.fit(model=tripletNetwork_tml, datamodule=dm_v3, ckpt_path=join(MAIN_MODELS_FOLDER, CKPT_LAST_PATH))
+    trainer2.save_checkpoint(join(MAIN_MODELS_FOLDER, 'TripletMarginLoss-epoch-{}.ckpt'.format(MAX_EPOCHS - 1)))
+    torch.save(trainer2.model.state_dict(), join(MAIN_MODELS_FOLDER,'TripletMarginLoss-epoch-{}.pth'.format(MAX_EPOCHS - 1)))
+    evaluating_performance_and_save_tsne_plot(tripletNetwork_tml, datamodule=dm_v3, plot_name='TripletMarginLoss-epoch-{}-TSNE-AAAAA'.format(MAX_EPOCHS - 1))
 
     # ---- Training Triplet Network with Triplet Margin with Distance Loss --------
 
