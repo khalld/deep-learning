@@ -38,10 +38,13 @@ Trashbin Triplet Classifier \\
 
 \section{Introduzione}
 
-L'obbiettivo dell'elaborato è implementare una procedura di \textit{Metric Learning} per classificare la 
+L'obiettivo dell'elaborato è implementare una procedura di \textit{Metric Learning} per classificare la 
 capienza rimanente di secchi della spazzatura in: pieno, vuoto, a metà.
 
-Il dataset è stato preso da un precedente progetto (\href{https://github.com/khalld/trashbin-classifier}{repository Github}) ed è disponibile \href{https://drive.google.com/drive/folders/11SGtZrM8BWJDPOcnKR7RjLJs0dJOfSCA?usp=sharing}{al seguente indirizzo}.
+Il dataset è stato preso da un precedente progetto (\href{https://github.com/khalld/trashbin-classifier}{https://github.com/khalld/trashbin-classifier})
+ed è disponibile al seguente indirizzo: \ \ \ \ 
+
+\href{https://drive.google.com/drive/folders/1LmN-fXWZ8UpRkLeMjbootN46V9AHaE4x}{https://drive.google.com/drive/folders/1LmN-fXWZ8UpRkLeMjbootN46V9AHaE4x}.
 
 Il progetto è stato implementato utilizzando \texttt{python v3.9.9} e \texttt{pytorch-lighting v1.6.3}. Il modello è stato allenato utilizzando un MacBook Pro (16-inch, 2019) con processore Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz, RAM: 16 GB 2667 MHz DDR4 e GPU AMD Radeon Pro 5300M 4 GB
 Intel UHD Graphics 630 1536 MB. Sfortunatamente, ad oggi, il modello di GPU non è supportato per l'accelerazione del training e di conseguenza è stato effettuato su CPU.
@@ -54,23 +57,25 @@ Il codice è ampiamente commentato, in particolare può essere diviso concettual
     \item \texttt{main.ipynb} Notebook Jupiter esplicativo, realizzato per visualizzare le performance ed effettuarne la valutazione (partendo da un \texttt{.ckpt})
 \end{enumerate}
 
-La repository del progetto è disponibile al \href{https://github.com/khalld/triplet-trashbin-classifier}{seguente} indirizzo.
+Nella repository (
+\href{https://github.com/khalld/triplet-trashbin-classifier}{https://github.com/khalld/triplet-trashbin-classifier} )
+è stato caricato solo il \texttt{.ckpt} del modello finale. Tutti i modelli ed i logs di tensorboard ottenuti sono
+stati caricati su Google Drive: \href{https://drive.google.com/file/d/1vgALpclAQs7xSMj2BkQJxj770hXyJm4-}{https://drive.google.com/file/d/1vgALpclAQs7xSMj2BkQJxj770hXyJm4-}
 
 \pagebreak
 
 \section{Architettura}
 
 Per il raggiungimento dell'obiettivo assegnato, è stato trovato opportuno
-l'utilizzo di una \textit{Rete Triplet}, dato che l'obbiettivo sarebbe massimizzare la distanza inter-classe degli oggetti
+l'utilizzo di una \textit{Rete Triplet}, dato che l'obbiettivo è
+massimizzare la distanza inter-classe degli oggetti
 e quest'ultima dovrebbe permettere di ottenere un criterio di training più forte rispetto a quello
 delle reti siamesi.
 
 Una rete di tipo Triplet ha un criterio di training più forte, in quanto, offre
 sempre un esempio positivo e negativo relativo
-al medesimo elemento di ancora. 
-
-Inoltre, questo approccio dovrebbe, garantire la massimizzazione della distanza
-tra 'metà-vuoto' e 'metà-pieno', rispetto alla rete siamese.
+al medesimo elemento di ancora. Inoltre, questo approccio dovrebbe garantire
+di massimizzare la distanza tra 'metà-vuoto' e 'metà-pieno' in modo migliore rispetto alla rete siamese.
 
 \begin{center}
     \begin{minipage}{0.6\linewidth}
@@ -99,11 +104,14 @@ Prende in input una tripletta di elementi $(I_i, I_j, I_k)$ che sono:
 
 In breve, la distanza dall'ancora al positivo è minimizzata e
 la distanza dall'ancora al negativo è massimizzata.
-Il modello farà in modo che una coppia di campioni con le stesse etichette abbia una distanza inferiore rispetto a una copppia di campioni con etichette diverse.
+Il modello farà in modo che una coppia di
+campioni con le stesse etichette abbia una distanza inferiore
+rispetto a una coppia di campioni con etichette diverse.
 
 \subsection{Scelta del modello}
 
-Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-trained, eliminando il layer di classificazione.
+Come feature extractor è stata utilizzata
+una \textbf{SqueezeNet} pre-trained senza il layer di classificazione.
 
 \begin{center}
     \begin{minipage}{0.48\linewidth}
@@ -112,16 +120,15 @@ Come feature extractor si è deciso di utilizzare una \textbf{SqueezeNet} pre-tr
     \captionof{figure}{Architettura SqueezeNet}
 \end{center}
 
-Nel progetto precedente, sono stati presi in esame alcuni modelli pretrained, disponibili su
-\texttt{torchvision.models}, per effettuare il task di classificazione: per tale motivo,
+Nel progetto precedente
+sono stati presi in esame alcuni modelli pretrained, disponibili su
+\texttt{torchvision.models}, per tale motivo,
 è stato più conveniente utilizzare \texttt{SqueezeNet}, che aveva comunque ottenuto il miglior risultato
 in termini di tempo, esecuzione e validazione.
 
 Inizialmente, nonostante la maggiore potenza computazionale rispetto allo studio precedente,
 sono state effettuate delle prove utilizzando \texttt{MobileNetV2}, ma quest'ultima richiedeva
-circa il doppio del tempo di \texttt{SqueezeNet}
-
-In particolare, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 70 minuti
+circa il doppio del tempo di \texttt{SqueezeNet}. In particolare, il completamento di un'epoca utilizzando \texttt{MobileNetV2} richiedeva 70 minuti
 contro i 35/40 di \texttt{SqueezeNet v1} per immagini a colori \texttt{224x224}. Approssimando ed effettuando un training di 60 epoche \texttt{SqueezeNet v1} impiegherebbe 30 ore contro le 70 di \texttt{MobileNetV2}.
 
 \subsection{Ottimizzazione del modello}
@@ -130,29 +137,26 @@ Sono state utilizzate funzioni, presenti su \texttt{pytorch-lighting} per trovar
 Nel dettaglio:
 
 \begin{itemize}
-    \item {\textbf{Batch Size Finder} 
+    \item {\textbf{Batch Size Finder}: 
         impiegato per evitare problemi in memoria durante il training. Viene utilizzato
-        per trovare la dimensione batch più grande, che si adatta alla memoria. In questo caso il pc supportava batch di dimensioni fino a \textbf{6600} I lotti di grandi
+        per trovare la dimensione batch più grande, che si adatta alla memoria. In questo caso il pc supportava batch di dimensioni fino a \textbf{6600}. I lotti di grandi
         dimensioni spesso producono una migliore stima dei gradienti,
-        ma possono anche comportare tempi di addestramento più lunghi. Dopo diverse prove è stato
+        ma possono anche comportare tempi di addestramento più lunghi. Dopo diverse prove e data la dimension esigua del dataset è stato
         opportuno fissarla a \textbf{256}; 
     }
-    \item \textbf{Learning Rate Finder} {
-
-        Selezionare un learning rate è essenziale sia per
+    \item {\textbf{Learning Rate Finder}: selezionare un learning rate è essenziale sia per ottenere
         prestazioni migliori, che per una convergenza più rapida. Da documentazione,
         il \textit{learning rate finder} esegue una piccola run dove il learning rate viene aumentato dopo ogni batch elaborato
         e viene registrata la loss corrispondente.
     }
-
 \end{itemize}
 
 \section{Dataset}
 
 Si è presentata la necessità di riadattare il dataset in triplette: ad ogni elemento di \textbf{ancora} verrà
 associato un elemento \textbf{positivo} ed uno \textbf{negativo}, che sarà scelto randomicamente 
-(ad esempio, se l'ancora è della classe 'vuoto', l'elemento negativo sarà scelto randomicamente tra 'pieno' o 'mezzo')
-Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è documentato su \texttt{dataset.ipynb}. 
+(ad esempio, se l'ancora è della classe 'vuoto', l'elemento negativo sarà 'pieno' o 'mezzo'). Per
+questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è documentato su \texttt{dataset.ipynb}. 
 
 \begin{center}
     \begin{minipage}{0.6\linewidth}
@@ -162,7 +166,7 @@ Per questo, sono state implementate delle funzioni ad-hoc il cui utilizzo è doc
 \end{center}
 
 Effettuando vari test, è stato trovato più efficiente salvare il dataset generato in
-\texttt{.csv}, evitando memorizzare le triplette in memoria. Si nota che, per incrementare
+\texttt{.csv}, evitando di memorizzare le triplette in memoria. Si nota che, per incrementare
 la \textbf{generalizzazione}, sarebbe utile avere a disposizione diversi
 \texttt{.csv} del dataset adattato ed alternare le varie versioni del dataset dopo un certo numero di epoche, 
 in quanto, la funzione è stata implementata in modo tale che le triplette generate siano diverse ad ogni esecuzione del codice. Nel nostro caso, viene utilizzata
@@ -174,8 +178,8 @@ una versione per le prime 30 epoche e successivamente viene cambiato ogni 15.
 Per il training della rete siamese sono state prese in esame due loss differenti (disponibili su \texttt{torch.nn})
 
 \subsection{Triplet margin loss}
-Dati in input i tensori $x_1$, $x_2$, $x_3$ ed un $margin$ con un valore $> 0$, ed è
-utilizzata per misurare una similitudine tra i samples.
+Prende in input i tensori $x_1$, $x_2$, $x_3$ ed un $margin$ con un valore $> 0$,
+la \textbf{Triplet margin loss} viene impiegata quando si vuole misurare una similitudine tra i samples.
 Una tripletta è composta da $a$ (ancora), $p$ (positivo) ed $n$ (negativo). 
 \begin{center}
     \ \
@@ -186,9 +190,9 @@ Una tripletta è composta da $a$ (ancora), $p$ (positivo) ed $n$ (negativo).
 \end{center}
 
 \subsection{Triplet margin with distance loss}
-Dati in input i tensori $a$ (ancora), $p$ (positivo) ed $n$ (negativo) ed una funzione a valori
-reali non negativa chiamata \textit{funzione di distanza} $d$ usata per calcolare la relazione tra
-l'ancora e l'esempio positivo (distanza positiva) e l'ancora e l'esempio negativo (distanza negativa). La loss non ridotta può essere descritta dalla seguente formula:
+Prende in input i tensori $a$ (ancora), $p$ (positivo) ed $n$ (negativo) ed una funzione a valori
+reali non negativa chiamata \textit{funzione di distanza} $d$.
+La \textbf{triplet margin with distance loss} può essere descritta dalla seguente formula:
 
 \begin{center}
     $l(a,p,n) = L = { \{ l_1, \ldots, l_N \}}^T, l_i = \max{\{ d(a_i, p_i) - d(a_i, n_i) + margin, 0 \}} $
@@ -198,13 +202,14 @@ dove:
 
 \begin{enumerate}
     \item $N$ è la dimensione del batch;
-    \item {$d$ è una funzione non negativa a valori reali, che quantifica la vicinanza di due tensori riferito
-    alla funzione di distanza;}
+    \item {$d$ è una funzione non negativa a valori reali che quantifica la vicinanza di due tensori riferito
+    alla funzione di distanza. Calcola la relazione tra l'ancora e l'esempio positivo
+    (distanza positiva) e l'ancora e l'esempio negativo (distanza negativa);}
     \item {$margin$ 
-        è un margine non negativo, che rappresenta la differenza minima
-        tra le distanze positive e negative che è richiesto dalla loss che sia 0;
+        è un margine non negativo che rappresenta la differenza minima
+        tra le distanze positive e negative (richiesto 0 dalla loss);
     }
-    \item Il tensore di input ha $N$ elementi ognuno del quale può essere di qualsiasi forma, che la funzione di distanza può gestire.
+    \item Il tensore di input ha $N$ elementi, ognuno del quale può essere di qualsiasi forma, che la funzione di distanza può gestire.
 
     \item {
         Di default la funzione di distanza utilizzata è la Paiwrise Distance Funtion,
@@ -222,10 +227,10 @@ dove:
 \pagebreak
 \section{Training}
 
-Durante le prime fasi di training sono state effettuate delle prove con e senza data augmentation. Inizialmente, la data augmentation applicata
-era quella del progetto precedentemente citato, senza fornire miglioramenti.
-
-Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
+Durante le prime fasi di training sono state effettuate delle prove con e senza \textbf{data augmentation}. Inizialmente, la data augmentation applicata
+era quella del progetto precedentemente citato, che, comunque non ha fornito miglioramenti (si nota che nei grafici sottostanti a 0 corrisponde la classe 'vuoto',
+ad 1 'metà' e a 2 'pieno'). Di seguito degli \textit{embedding T-SNE} allo stato iniziale e dopo il training (modello con variante \textbf{Triplet Margin Loss}).
+Le predizioni sulle etichette sono state calcolate utilizzando \textbf{Nearest Neighbor}:
 
 \begin{center}
     \begin{minipage}{0.3\linewidth}
@@ -237,7 +242,7 @@ Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{06.png}
     \end{minipage}
-    \captionof{figure}{Embedding di elementi randomici sul dataset \textbf{senza data augmentation}, rispettivamente dopo: 0, 10, 30 epoche di training, utilizzando Triplet Margin Loss}
+    \captionof{figure}{T-SNE embeddings \textbf{senza data augmentation} dopo 0, 10, 30 epoche di training}
 \end{center}
 
 
@@ -251,10 +256,12 @@ Nel grafico, a 0 corrisponde vuoto, 1 metà, 2 pieno.
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{09.png}
     \end{minipage}
-    \captionof{figure}{Embedding di elementi randomici sul dataset \textbf{con data augmentation forte}, rispettivamente dopo: 0, 30, 60 epoche di training, utilizzando Triplet Margin Loss}
+    \captionof{figure}{T-SNE embeddings \textbf{con data augmentation forte} dopo: 0, 30, 60 epoche di training}
 \end{center}
 
-Dopo numerose prove, è stato opportuno applicare \texttt{RandomCrop()} e \texttt{RandomPerspective} al dataset di training e \texttt{CenterCrop} al dataset di test
+Dai grafici di sopra si evince che con una data augmentation (troppo) forte il modello non riesce a trasformare correttamente lo spazio di input per massimizzare la distanza inter classe (elementi diversi sono lontani)
+e minimizzare la distanza intra-classe (elementi simili sono vicini). Dopo numerose prove, è stato
+trovato efficiente, in modo da preservarne le feature estratte applicare solamente \texttt{RandomCrop()} e \texttt{RandomPerspective} al dataset di training e \texttt{CenterCrop} al dataset di test.
 
 \pagebreak
 
@@ -281,7 +288,7 @@ Gli errori classificazione ottenuti dalle loss due loss sono riassunti nella seg
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{TML-TSNE-30.png}
     \end{minipage}
-    \captionof{figure}{Embedding di elementi randomici sul dataset utilizzando il modello con \textbf{Triplet Margin Loss}, rispettivamente dopo: 0, 15, 30 epoche di training}    
+    \captionof{figure}{T-SNE embeddings ottenuti con \textbf{Triplet Margin Loss} dopo: 0, 15, 30 epoche di training}    
 \end{center}
 
 \begin{center}
@@ -294,33 +301,36 @@ Gli errori classificazione ottenuti dalle loss due loss sono riassunti nella seg
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{TMWDL-TSNE-30.png}
     \end{minipage}
-    \captionof{figure}{Embedding di elementi randomici sul dataset utilizzando il modello con \textbf{Triplet Margin with Distance Loss}, rispettivamente dopo: 0, 15, 30 epoche di training}    
+    \captionof{figure}{T-SNE embeddings ottenuti con \textbf{Triplet Margin with Distance Loss} dopo: 0, 15, 30 epoche di training}    
 \end{center}
 
 \begin{center}
-    \begin{minipage}{0.3\linewidth}
-    \includegraphics[width=\linewidth]{train_loss.png}
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{train_loss_1.png}
     \end{minipage}
-    \begin{minipage}{0.3\linewidth}
-    \includegraphics[width=\linewidth]{valid_loss.png}
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{valid_loss_1.png}
     \end{minipage}
-    \captionof{figure}{Grafici di convergenza di training (sx) e validation (dx) del modello utilizzando Triplet Margin Loss (arancione) e Triplet Margin with Distance Loss (blu)}
+    \captionof{figure}{Grafici di convergenza di training (sx) e validation (dx) con Triplet Margin Loss (arancione / blu) e Triplet Margin with Distance Loss (rosso / azzurro)}
 \end{center}
 
 
 \pagebreak
 \section{Conclusione}
 
-Nonostante nell'immediato la triplet margin with distance loss ottenga, a parità di epoca, un punteggio migliore rispetto (di pochissimo)
-alla triplet margin loss,
-si decide comunque di procedere continunando il training con la triplet margin loss in quanto, visualizzando il grafico,il valore della loss
-è diminuito molto di più rispetto all'altra.
-Per aumentare la generalizzazione, inoltre, ogni 15 epoche il dataset utilizzato per effettuare il training verrà cambiato. 
+Dopo 30 epoche si è deciso di procedere continuando il training con la \textbf{Triplet Margin Loss}, in quanto la loss
+sembrerebbe scendere più rapidamente rispetto al modello l'altra variante. Si ricorda che 
+ogni 15 epoche le triplette utilizzate per effettuare l'addestramento sono state cambiate. 
 
 \begin{center}
-    visualizzazione dei grafici dei tnse completi
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{train_loss_2.png}
+    \end{minipage}
+    \begin{minipage}{0.45\linewidth}
+    \includegraphics[width=\linewidth]{valid_loss_2.png}
+    \end{minipage}
+    \captionof{figure}{Grafico di convergenza di training (sx) e validation (dx)}
 \end{center}
-
 
 \begin{center}
     \begin{minipage}{0.3\linewidth}
@@ -338,42 +348,30 @@ Per aumentare la generalizzazione, inoltre, ogni 15 epoche il dataset utilizzato
     \begin{minipage}{0.3\linewidth}
     \includegraphics[width=\linewidth]{TML-TSNE-60.png}
     \end{minipage}
-    \captionof{figure}{Embedding di elementi randomi utilizzando Triplet Margin loss rispettivamente dopo: 0, 15, 30, 40, 60 epoche di training}
+    \captionof{figure}{T-SNE embeddings dopo: 0, 15, 30, 40, 60 epoche di training}
 \end{center}
 
-\begin{center}
-    grafo di convergenza finale
-\end{center}
-
-\begin{center}
-    \begin{minipage}{0.48\linewidth}
-    \includegraphics[width=\linewidth]{tensorboard_2.png}
-    \end{minipage}
-    \captionof{figure}{Visualizzazione embedding 3D}
-\end{center}
-
-Errore di validazione / classificazione finale
+L'errore finale di classificazione ottenuto dopo \texttt{60 epoche} è \texttt{0.861}, mentre quello di validazione \texttt{1.083}. 
 
 
 \pagebreak
 
-\begin{thebibliography}{4}
+% \begin{thebibliography}{4}
 
-\bibitem{1} \href{https://pytorch.org/vision/stable/models.html}{Models and Pre-trained Weights}
-\bibitem{2} \href{
-    https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
-}{Triplet Margin Loss}
-\bibitem{2} \href{
-    https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
-}{Triplet Margin With Distance Loss}
-\bibitem{4} \href{
-    https://pytorch.org/docs/stable/generated/torch.nn.PairwiseDistance.html
-}{PairwiseDistance}
+% \bibitem{1} \href{https://pytorch.org/vision/stable/models.html}{Models and Pre-trained Weights}
+% \bibitem{2} \href{
+%     https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
+% }{Triplet Margin Loss}
+% \bibitem{2} \href{
+%     https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
+% }{Triplet Margin With Distance Loss}
+% \bibitem{4} \href{
+%     https://pytorch.org/docs/stable/generated/torch.nn.PairwiseDistance.html
+% }{PairwiseDistance}
 
 % https://openaccess.thecvf.com/content_CVPR_2020/papers/Ko_Embedding_Expansion_Augmentation_in_Embedding_Space_for_Deep_Metric_Learning_CVPR_2020_paper.pdf
 
-
-\end{thebibliography}
+% \end{thebibliography}
 
 
 \pagebreak

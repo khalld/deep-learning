@@ -1,12 +1,11 @@
 # Triplet Network Trashbin Classifier
-<ul>
 
+<ul>
   <li>Report available <a href="https://github.com/khalld/triplet-trashbin-classifier/blob/main/report/report.pdf">here</a></li>
-  <li> Checkpoints and tensorboard logs available <a href="">here</a>
+  <li> Checkpoints and tensorboard logs available <a href="https://drive.google.com/file/d/1vgALpclAQs7xSMj2BkQJxj770hXyJm4-">here</a>
   <li>Dataset available <a href="https://drive.google.com/drive/folders/1LmN-fXWZ8UpRkLeMjbootN46V9AHaE4x?usp=sharing">here</a>
   <li><a href="https://github.com/khalld/trashbin-classifier">Trashbin Classifier</a> (old project)
 </ul>
-  
 
 ## Setup
 
