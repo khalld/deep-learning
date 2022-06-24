@@ -207,7 +207,7 @@ dove:
     (distanza positiva) e l'ancora e l'esempio negativo (distanza negativa);}
     \item {$margin$ 
         è un margine non negativo che rappresenta la differenza minima
-        tra le distanze positive e negative (richiesto 0 dalla loss);
+        tra le distanze positive e negative;
     }
     \item Il tensore di input ha $N$ elementi, ognuno del quale può essere di qualsiasi forma, che la funzione di distanza può gestire.
 
@@ -228,9 +228,9 @@ dove:
 \section{Training}
 
 Durante le prime fasi di training sono state effettuate delle prove con e senza \textbf{data augmentation}. Inizialmente, la data augmentation applicata
-era quella del progetto precedentemente citato, che, comunque non ha fornito miglioramenti (si nota che nei grafici sottostanti a 0 corrisponde la classe 'vuoto',
-ad 1 'metà' e a 2 'pieno'). Di seguito degli \textit{embedding T-SNE} allo stato iniziale e dopo il training (modello con variante \textbf{Triplet Margin Loss}).
-Le predizioni sulle etichette sono state calcolate utilizzando \textbf{Nearest Neighbor}:
+era quella del progetto precedentemente citato, che, comunque, non ha fornito miglioramenti (si nota che nei grafici sottostanti, a 0 corrisponde la classe 'vuoto',
+ad 1 'metà' e a 2 'pieno'). Sono stati estratti randomicamente dei campioni dal dataset di test ed è stata effettuata una predizione
+sulle etichette utilizzando \textbf{Nearest Neighbor}. Le feature sono state estratte utilizzando varie versioni del modello allenato (utilizzando la variante con \textbf{Triplet Margin Loss}). Di seguito degli \textit{embedding T-SNE}:
 
 \begin{center}
     \begin{minipage}{0.3\linewidth}
@@ -318,8 +318,8 @@ Gli errori classificazione ottenuti dalle loss due loss sono riassunti nella seg
 \pagebreak
 \section{Conclusione}
 
-Dopo 30 epoche si è deciso di procedere continuando il training con la \textbf{Triplet Margin Loss}, in quanto la loss
-sembrerebbe scendere più rapidamente rispetto al modello l'altra variante. Si ricorda che 
+Dopo 30 epoche si è deciso di procedere continuando il training con la \textbf{Triplet Margin Loss}, in quanto, quest'ultima 
+sembrerebbe convergere più rapidamente rispetto all'altra variante. Si ricorda che 
 ogni 15 epoche le triplette utilizzate per effettuare l'addestramento sono state cambiate. 
 
 \begin{center}
